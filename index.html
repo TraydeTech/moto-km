@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Moto KM</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Moto KM">
+<meta name="theme-color" content="#0E1114">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: painel de instrumentos — números grandes em cima, abas embaixo, uma coluna */
+:root{
+  --bg:#EEF0F2; --panel:#FFFFFF; --fg:#15181C; --muted:#5F6670; --line:#D5D9DE;
+  --accent:#B45309; --accent-ink:#FFFFFF; --ok:#1F9D55; --low:#C2362B; --seg-off:#D9DDE2;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0E1114; --panel:#171B20; --fg:#E8EBEE; --muted:#8B939C; --line:#262C33;
+  --accent:#F59E0B; --accent-ink:#1A1205; --ok:#34D27B; --low:#F0645A; --seg-off:#2A3038;
+  color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--body);-webkit-tap-highlight-color:transparent;
+  padding-top:env(safe-area-inset-top,0px)}
+main{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:16px calc(96px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:16px}
+h1,h2{font-family:var(--display);font-weight:600;margin:0;letter-spacing:.01em;text-wrap:balance}
+h1{font-size:28px}
+h2{font-size:20px}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600}
+.num{font-family:var(--display);font-variant-numeric:tabular-nums;font-weight:600}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat .num{font-size:30px;line-height:1}
+.stat .unit{font-size:15px;color:var(--muted);margin-left:2px;font-family:var(--body);font-weight:500}
+button,.btn{font:600 16px var(--body);border:0;border-radius:12px;padding:14px 18px;cursor:pointer;background:var(--seg-off);color:var(--fg);
+  min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+button.primary{background:var(--accent);color:var(--accent-ink)}
+button.danger{background:transparent;color:var(--low);border:1px solid var(--low)}
+button.ghost{background:transparent;border:1px solid var(--line)}
+button.block{width:100%}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+input,select{font:500 16px var(--body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;width:100%;min-height:46px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+
+/* Velocímetro da viagem */
+.gauge{text-align:center;padding-block:8px}
+.gauge .speed{font-size:112px;line-height:.9}
+.gauge .speed-unit{font-size:16px;color:var(--muted)}
+.gps{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.dot.ok{background:var(--ok)}.dot.bad{background:var(--low)}
+
+/* Bateria de 5 tracinhos, igual ao painel */
+.battery{display:flex;gap:6px;align-items:flex-end}
+.seg{flex:1;height:44px;border-radius:6px;background:var(--seg-off);border:0;padding:0;min-height:0}
+.seg.on{background:var(--ok)}
+.battery.low .seg.on{background:var(--low)}
+.battery.picker .seg{cursor:pointer}
+.battery.mini{gap:3px;width:62px}
+.battery.mini .seg{height:12px;border-radius:2px}
+
+/* Gráfico */
+.chart svg{width:100%;height:auto;display:block}
+.chart .bar{fill:var(--accent)}
+.chart .axis{stroke:var(--line);stroke-width:1}
+.chart text{fill:var(--muted);font:500 10px var(--body)}
+.chart text.val{fill:var(--fg);font-weight:600}
+.seg-ctl{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px}
+.seg-ctl button{flex:1;min-height:36px;padding:6px 10px;font-size:14px;background:transparent;border-radius:8px}
+.seg-ctl button[aria-pressed="true"]{background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+
+/* Lista de viagens */
+.trips{display:flex;flex-direction:column}
+.trip{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;padding-block:12px;border-top:1px solid var(--line)}
+.trip:first-child{border-top:0}
+.trip svg{width:52px;height:40px}
+.trip svg path{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.trip .km{font-size:24px}
+.trip .x{background:transparent;color:var(--muted);min-height:36px;padding:6px 10px;font-size:20px}
+
+/* Abas */
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:center;
+  padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);z-index:5}
+nav .tabs{display:flex;width:100%;max-width:560px}
+nav button{flex:1;flex-direction:column;gap:2px;background:transparent;border-radius:0;font-size:12px;font-weight:600;color:var(--muted);padding:10px 4px;min-height:60px}
+nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+nav button[aria-current="page"]{color:var(--accent)}
+
+/* Janela de baixo */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--panel);width:100%;max-width:560px;border-radius:18px 18px 0 0;display:flex;flex-direction:column;gap:14px;
+  padding:20px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);
+  padding:10px 16px;border-radius:10px;font-weight:600;z-index:30;max-width:90vw;text-align:center}
+.empty{text-align:center;padding:24px 8px;display:flex;flex-direction:column;gap:8px;align-items:center}
+.note{font-size:13px;color:var(--muted);border-left:3px solid var(--accent);padding-left:10px}
+@media (max-width:360px){.gauge .speed{font-size:88px}.grid3{grid-template-columns:1fr 1fr}}
+@media (prefers-reduced-motion:no-preference){button{transition:transform .08s}button:active{transform:scale(.97)}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav><div class="tabs" id="tabs"></div></nav>
+<div id="layer"></div>
+
+<script>
+'use strict';
+/* ---------- Dados ---------- */
+const KEY = 'motokm:v1';
+const DEF = {
+  settings: { preco: 0.90, ah: 20, volts: 60, efic: 0.85, odo: 0, tracos: 5, kwCarregador: 0.2 },
+  trips: [], charges: [], active: null
+};
+let S = load();
+let tab = 'viagem';
+let chartMode = 'dias';
+
+function load() {
+  try {
+    const r = JSON.parse(localStorage.getItem(KEY));
+    if (r) return { ...JSON.parse(JSON.stringify(DEF)), ...r, settings: { ...DEF.settings, ...(r.settings || {}) } };
+  } catch (e) {}
+  return JSON.parse(JSON.stringify(DEF));
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch (e) { toast('Não consegui salvar no aparelho. Faça um backup.'); }
+}
+
+/* ---------- Utilidades ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (n, d = 1) => (n == null || !isFinite(n)) ? '–' : n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const brl = n => (n == null || !isFinite(n)) ? '–' : n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const dur = sec => { sec = Math.round(sec || 0); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+  return h ? `${h}h${String(m).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`; };
+const dia = t => new Date(t).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+const hora = t => new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+const startOfDay = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+
+function dist(a, b) {
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (b[0] - a[0]) * r, dLon = (b[1] - a[1]) * r;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+let toastT;
+function toast(msg) {
+  clearTimeout(toastT);
+  $('#layer').querySelector('.toast')?.remove();
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
+  $('#layer').appendChild(el);
+  toastT = setTimeout(() => el.remove(), 2800);
+}
+
+/* ---------- Bateria ---------- */
+function batteryHTML(n, { picker = false, mini = false, name = '' } = {}) {
+  const t = S.settings.tracos; let h = '';
+  for (let i = 1; i <= t; i++) {
+    const on = n != null && i <= n ? ' on' : '';
+    h += picker
+      ? `<button type="button" class="seg${on}" data-pick="${name}" data-v="${i}" aria-label="${i} de ${t} tracinhos"></button>`
+      : `<span class="seg${on}"></span>`;
+  }
+  const low = n != null && n <= 1 ? ' low' : '';
+  return `<div class="battery${picker ? ' picker' : ''}${mini ? ' mini' : ''}${low}" ${picker ? `role="group" aria-label="Bateria"` : `aria-label="${n ?? '?'} de ${t} tracinhos"`}>${h}</div>`;
+}
+function bindPickers(root, onPick) {
+  root.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
+    const name = b.dataset.pick, v = +b.dataset.v;
+    root.querySelectorAll(`[data-pick="${name}"]`).forEach(s => s.classList.toggle('on', +s.dataset.v <= v));
+    s_low(root, name, v);
+    onPick(name, v);
+  });
+}
+function s_low(root, name, v) {
+  const g = root.querySelector(`[data-pick="${name}"]`)?.parentElement;
+  if (g) g.classList.toggle('low', v <= 1);
+}
+
+/* ---------- Cálculos ---------- */
+function stats(trips) {
+  let km = 0, sec = 0, dash = 0, kmDash = 0;
+  for (const t of trips) {
+    km += t.km; sec += t.movingSec || 0;
+    if (t.dashStart != null && t.dashEnd != null && t.dashStart > t.dashEnd) { dash += t.dashStart - t.dashEnd; kmDash += t.km; }
+  }
+  const s = S.settings, whBat = s.volts * s.ah;
+  const ok = dash >= 2 && kmDash > 0;
+  const kmPorTraco = ok ? kmDash / dash : null;
+  const whKm = ok ? (dash / s.tracos * whBat) / kmDash : null;
+  const custoKm = whKm ? whKm / 1000 / s.efic * s.preco : null;
+  return { km, sec, n: trips.length, dash, kmPorTraco, whKm, custoKm, autonomia: kmPorTraco ? kmPorTraco * s.tracos : null };
+}
+function chargeKwh(c) {
+  const s = S.settings;
+  if (c.hours) return c.hours * s.kwCarregador;
+  return (s.tracos - (c.dashFrom ?? 0)) / s.tracos * s.volts * s.ah / 1000 / s.efic;
+}
+function inPeriod(list, from) { return list.filter(x => (x.start ?? x.date) >= from); }
+function monthStart() { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d.getTime(); }
+
+/* ---------- GPS ---------- */
+let watchId = null, wake = null, ticker = null, lastSave = 0;
+
+function startTrip(dash) {
+  S.active = { start: Date.now(), dashStart: dash, m: 0, movingMs: 0, maxKmh: 0, last: null, lastT: null, route: [], speed: 0, acc: null, gps: 'aguardando' };
+  save(); beginWatch(); render();
+}
+function beginWatch() {
+  if (!('geolocation' in navigator)) { toast('Este navegador não tem acesso ao GPS'); return; }
+  if (watchId != null) navigator.geolocation.clearWatch(watchId);
+  S.active.last = null; // evita somar o trecho em que o app ficou fechado
+  watchId = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+  requestWake();
+  clearInterval(ticker); ticker = setInterval(renderLive, 1000);
+}
+function stopWatch() {
+  if (watchId != null) navigator.geolocation.clearWatch(watchId);
+  watchId = null; clearInterval(ticker); ticker = null;
+  try { wake?.release(); } catch (e) {} wake = null;
+}
+async function requestWake() {
+  try { if ('wakeLock' in navigator) wake = await navigator.wakeLock.request('screen'); } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && S.active) { requestWake(); renderLive(); }
+});
+
+function onErr(e) {
+  if (!S.active) return;
+  S.active.gps = e.code === 1 ? 'negado' : 'sem sinal';
+  renderLive();
+}
+function onPos(p) {
+  const A = S.active; if (!A) return;
+  const c = p.coords, t = p.timestamp;
+  A.acc = Math.round(c.accuracy);
+  if (c.accuracy > 30) { A.gps = 'fraco'; renderLive(); return; }
+  A.gps = 'ok';
+  const pt = [c.latitude, c.longitude];
+  if (!A.last) { A.last = pt; A.lastT = t; pushRoute(A, pt); persist(); renderLive(); return; }
+
+  const d = dist(A.last, pt), dt = (t - A.lastT) / 1000;
+  if (dt <= 0) return;
+  const vCalc = d / dt * 3.6;
+  const v = (c.speed != null && c.speed >= 0) ? c.speed * 3.6 : vCalc;
+  if (vCalc > 100) return;                       // salto do GPS, ignora
+  if (d < Math.max(4, c.accuracy * 0.4)) {       // parado ou tremida do GPS
+    A.speed = v < 3 ? 0 : v; renderLive(); return;
+  }
+  A.m += d;
+  if (vCalc > 2) A.movingMs += Math.min(dt, 30) * 1000;
+  A.maxKmh = Math.max(A.maxKmh, Math.min(v, 100));
+  A.speed = v; A.last = pt; A.lastT = t;
+  pushRoute(A, pt); persist(); renderLive();
+}
+function pushRoute(A, pt) {
+  const r = A.route, p = [+pt[0].toFixed(5), +pt[1].toFixed(5)];
+  if (!r.length || dist(r[r.length - 1], p) >= 15) r.push(p);
+  if (r.length > 1500) A.route = r.filter((_, i) => i % 2 === 0 || i === r.length - 1);
+}
+function persist() { const n = Date.now(); if (n - lastSave > 5000) { lastSave = n; save(); } }
+
+function finishTrip(dashEnd) {
+  const A = S.active; if (!A) return;
+  stopWatch();
+  const trip = { id: Date.now(), start: A.start, end: Date.now(), km: A.m / 1000, movingSec: A.movingMs / 1000,
+    maxKmh: A.maxKmh, dashStart: A.dashStart, dashEnd, route: A.route };
+  S.active = null;
+  if (trip.km >= 0.05) { S.trips.push(trip); toast(`Viagem salva: ${fmt(trip.km, 2)} km`); }
+  else toast('Viagem muito curta, não foi salva');
+  save(); render();
+}
+function cancelTrip() { stopWatch(); S.active = null; save(); render(); toast('Viagem descartada'); }
+
+/* ---------- Telas ---------- */
+const TABS = [
+  ['viagem', 'Viagem', '<circle cx="12" cy="13" r="8"/><path d="M12 13l4-4M12 3v2"/>'],
+  ['relatorio', 'Relatório', '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'],
+  ['cargas', 'Recargas', '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>'],
+  ['ajustes', 'Ajustes', '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 1.2 14H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 7 2.6V2.5a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 19.4 9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 2z"/>']
+];
+function renderTabs() {
+  $('#tabs').innerHTML = TABS.map(([id, name, ic]) =>
+    `<button type="button" data-tab="${id}" ${tab === id ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ic}</svg>${name}</button>`).join('');
+  $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); window.scrollTo(0, 0); });
+}
+
+function render() {
+  renderTabs();
+  const app = $('#app');
+  if (tab === 'viagem') app.innerHTML = S.active ? viewLive() : viewStart();
+  if (tab === 'relatorio') app.innerHTML = viewReport();
+  if (tab === 'cargas') app.innerHTML = viewCharges();
+  if (tab === 'ajustes') app.innerHTML = viewSettings();
+  bind();
+}
+
+function viewStart() {
+  const st = stats(S.trips), today = stats(inPeriod(S.trips, startOfDay(Date.now())));
+  const last = S.trips[S.trips.length - 1];
+  return `
+  <header class="row between"><h1>Moto KM</h1><span class="small muted">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</span></header>
+  <section class="panel">
+    <div class="grid2">
+      <div class="stat"><span class="label">Hodômetro</span><span class="num">${fmt(S.settings.odo + st.km, 1)}<span class="unit">km</span></span></div>
+      <div class="stat"><span class="label">Hoje</span><span class="num">${fmt(today.km, 1)}<span class="unit">km</span></span></div>
+    </div>
+    ${last ? `<div class="row between small"><span class="muted">Bateria na última viagem</span>${batteryHTML(last.dashEnd, { mini: true })}</div>` : ''}
+  </section>
+  <section class="panel">
+    <h2>Nova viagem</h2>
+    <span class="small muted">Quantos tracinhos o painel mostra agora?</span>
+    ${batteryHTML(last?.dashEnd ?? S.settings.tracos, { picker: true, name: 'ini' })}
+    <button class="primary block" id="go">Iniciar viagem</button>
+    <p class="note">Deixe o celular no suporte com a tela ligada. Com a tela apagada o iPhone para de mandar o GPS para o app.</p>
+  </section>
+  ${st.autonomia ? `<section class="panel"><div class="grid2">
+      <div class="stat"><span class="label">Autonomia estimada</span><span class="num">${fmt(st.autonomia, 0)}<span class="unit">km</span></span></div>
+      <div class="stat"><span class="label">Cada tracinho</span><span class="num">${fmt(st.kmPorTraco, 1)}<span class="unit">km</span></span></div>
+    </div></section>` : ''}`;
+}
+
+function viewLive() {
+  return `
+  <header class="row between"><h1>Em viagem</h1><span class="gps" id="gps"><span class="dot"></span>GPS</span></header>
+  <section class="panel gauge">
+    <div class="num speed" id="spd">0</div><div class="speed-unit">km/h</div>
+  </section>
+  <section class="panel">
+    <div class="grid3">
+      <div class="stat"><span class="label">Distância</span><span class="num" id="lkm">0,00</span><span class="small muted">km</span></div>
+      <div class="stat"><span class="label">Tempo</span><span class="num" id="ltime">0:00</span><span class="small muted">em movimento</span></div>
+      <div class="stat"><span class="label">Máxima</span><span class="num" id="lmax">0</span><span class="small muted">km/h</span></div>
+    </div>
+    <div class="row between small"><span class="muted">Saiu com</span>${batteryHTML(S.active.dashStart, { mini: true })}</div>
+  </section>
+  <button class="primary block" id="end">Terminar viagem</button>
+  <button class="ghost block" id="cancel">Descartar</button>`;
+}
+function renderLive() {
+  const A = S.active; if (!A || tab !== 'viagem' || !$('#spd')) return;
+  $('#spd').textContent = Math.round(A.speed || 0);
+  $('#lkm').textContent = fmt(A.m / 1000, 2);
+  $('#ltime').textContent = dur(A.movingMs / 1000);
+  $('#lmax').textContent = Math.round(A.maxKmh);
+  const g = $('#gps'), map = { ok: ['ok', `GPS ±${A.acc} m`], fraco: ['bad', `Sinal fraco ±${A.acc} m`], negado: ['bad', 'GPS bloqueado'], 'sem sinal': ['bad', 'Sem sinal'], aguardando: ['', 'Procurando GPS…'] };
+  const [cls, txt] = map[A.gps] || map.aguardando;
+  g.innerHTML = `<span class="dot ${cls}"></span>${txt}`;
+}
+
+function chartBuckets() {
+  const now = new Date(); const b = [];
+  if (chartMode === 'dias') {
+    for (let i = 13; i >= 0; i--) { const d = new Date(now); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i);
+      const e = new Date(d); e.setDate(e.getDate() + 1); b.push({ from: +d, to: +e, lab: String(d.getDate()) }); }
+  } else if (chartMode === 'semanas') {
+    const d0 = new Date(now); d0.setHours(0, 0, 0, 0); d0.setDate(d0.getDate() - ((d0.getDay() + 6) % 7)); // segunda
+    for (let i = 11; i >= 0; i--) { const d = new Date(d0); d.setDate(d.getDate() - 7 * i); const e = new Date(d); e.setDate(e.getDate() + 7);
+      b.push({ from: +d, to: +e, lab: `${d.getDate()}/${d.getMonth() + 1}` }); }
+  } else {
+    for (let i = 11; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); const e = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      b.push({ from: +d, to: +e, lab: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '') }); }
+  }
+  b.forEach(x => x.km = S.trips.filter(t => t.start >= x.from && t.start < x.to).reduce((a, t) => a + t.km, 0));
+  return b;
+}
+function chartSVG() {
+  const b = chartBuckets(), W = 340, H = 150, top = 18, bottom = 20, left = 4, right = 4;
+  const max = Math.max(1, ...b.map(x => x.km));
+  const step = (W - left - right) / b.length, bw = step * 0.62, ih = H - top - bottom;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Quilômetros por período"><line class="axis" x1="0" x2="${W}" y1="${H - bottom}" y2="${H - bottom}"/>`;
+  const every = b.length > 12 ? 2 : 1;
+  b.forEach((x, i) => {
+    const h = x.km / max * ih, xx = left + i * step + (step - bw) / 2, y = H - bottom - h;
+    if (x.km > 0) s += `<rect class="bar" x="${xx.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(h, 1.5).toFixed(1)}" rx="2"/>`;
+    if (x.km > 0 && (x.km === max || b.length <= 12)) s += `<text class="val" x="${(xx + bw / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle">${fmt(x.km, x.km < 10 ? 1 : 0)}</text>`;
+    if ((b.length - 1 - i) % every === 0) s += `<text x="${(xx + bw / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(x.lab)}</text>`;
+  });
+  return s + '</svg>';
+}
+function routeSVG(r) {
+  if (!r || r.length < 2) return '<svg viewBox="0 0 52 40" aria-hidden="true"></svg>';
+  const la = r.map(p => p[0]), lo = r.map(p => p[1]);
+  const minLa = Math.min(...la), maxLa = Math.max(...la), minLo = Math.min(...lo), maxLo = Math.max(...lo);
+  const k = Math.cos(minLa * Math.PI / 180), w = (maxLo - minLo) * k || 1e-6, h = (maxLa - minLa) || 1e-6;
+  const sc = Math.min(44 / w, 32 / h), ox = (52 - w * sc) / 2, oy = (40 - h * sc) / 2;
+  const d = r.map((p, i) => `${i ? 'L' : 'M'}${(ox + (p[1] - minLo) * k * sc).toFixed(1)} ${(oy + (maxLa - p[0]) * sc).toFixed(1)}`).join('');
+  return `<svg viewBox="0 0 52 40" aria-hidden="true"><path d="${d}"/></svg>`;
+}
+
+function viewReport() {
+  const all = stats(S.trips), mes = stats(inPeriod(S.trips, monthStart()));
+  const custoMes = inPeriod(S.charges, monthStart()).reduce((a, c) => a + chargeKwh(c) * S.settings.preco, 0);
+  const trips = [...S.trips].sort((a, b) => b.start - a.start).slice(0, 40);
+  return `
+  <header class="row between"><h1>Relatório</h1><button class="ghost" id="copy" style="min-height:40px;padding:8px 14px;font-size:14px">Copiar resumo</button></header>
+  <section class="panel">
+    <span class="label">Este mês</span>
+    <div class="grid3">
+      <div class="stat"><span class="num">${fmt(mes.km, 1)}</span><span class="small muted">km</span></div>
+      <div class="stat"><span class="num">${mes.n}</span><span class="small muted">viagens</span></div>
+      <div class="stat"><span class="num">${dur(mes.sec)}</span><span class="small muted">rodando</span></div>
+    </div>
+    <div class="row between small"><span class="muted">Gasto com recargas no mês</span><span class="num" style="font-size:20px">${brl(custoMes)}</span></div>
+  </section>
+  <section class="panel chart">
+    <div class="row between"><h2>Quilômetros</h2>
+      <div class="seg-ctl" role="group" aria-label="Agrupar por">
+        ${[['dias', 'Dias'], ['semanas', 'Semanas'], ['meses', 'Meses']].map(([k, n]) => `<button type="button" data-chart="${k}" aria-pressed="${chartMode === k}">${n}</button>`).join('')}
+      </div></div>
+    ${S.trips.length ? chartSVG() : '<div class="empty muted small">O gráfico aparece depois da primeira viagem.</div>'}
+  </section>
+  <section class="panel">
+    <h2>Consumo de bateria</h2>
+    ${all.kmPorTraco ? `
+    <div class="grid2">
+      <div class="stat"><span class="label">Cada tracinho</span><span class="num">${fmt(all.kmPorTraco, 1)}<span class="unit">km</span></span></div>
+      <div class="stat"><span class="label">Carga cheia</span><span class="num">${fmt(all.autonomia, 0)}<span class="unit">km</span></span></div>
+      <div class="stat"><span class="label">Consumo</span><span class="num">${fmt(all.whKm, 0)}<span class="unit">Wh/km</span></span></div>
+      <div class="stat"><span class="label">Custo por km</span><span class="num">${brl(all.custoKm)}</span></div>
+    </div>
+    <p class="note">Baseado em ${all.dash} tracinhos gastos. Cada tracinho é cerca de 20% da bateria, então a conta fica mais certa com o tempo.</p>`
+    : `<p class="small muted">Precisa gastar pelo menos 2 tracinhos registrados nas viagens pra calcular. Marque a bateria no começo e no fim de cada viagem.</p>`}
+  </section>
+  <section class="panel">
+    <div class="row between"><h2>Viagens</h2><button class="ghost" id="manual" style="min-height:40px;padding:8px 14px;font-size:14px">+ Manual</button></div>
+    ${trips.length ? `<div class="trips">${trips.map(t => `
+      <div class="trip">
+        ${routeSVG(t.route)}
+        <div style="min-width:0">
+          <div class="row" style="gap:8px"><span class="num km">${fmt(t.km, 2)}</span><span class="small muted">km</span></div>
+          <div class="small muted">${dia(t.start)} · ${hora(t.start)}${t.movingSec ? ` · ${dur(t.movingSec)}` : ''}${t.maxKmh ? ` · máx ${Math.round(t.maxKmh)} km/h` : ''}</div>
+          ${t.dashStart != null ? `<div class="row small muted" style="gap:6px">${batteryHTML(t.dashStart, { mini: true })}→${batteryHTML(t.dashEnd, { mini: true })}</div>` : ''}
+        </div>
+        <button class="x" data-del="${t.id}" aria-label="Apagar viagem">×</button>
+      </div>`).join('')}</div>`
+    : `<div class="empty"><strong>Nenhuma viagem ainda</strong><span class="small muted">Vá na aba Viagem e toque em Iniciar viagem antes de sair.</span></div>`}
+  </section>`;
+}
+
+function viewCharges() {
+  const list = [...S.charges].sort((a, b) => b.date - a.date);
+  const mes = inPeriod(S.charges, monthStart());
+  const kwhMes = mes.reduce((a, c) => a + chargeKwh(c), 0);
+  return `
+  <header><h1>Recargas</h1></header>
+  <section class="panel">
+    <div class="grid2">
+      <div class="stat"><span class="label">Energia no mês</span><span class="num">${fmt(kwhMes, 2)}<span class="unit">kWh</span></span></div>
+      <div class="stat"><span class="label">Custo no mês</span><span class="num">${brl(kwhMes * S.settings.preco)}</span></div>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Registrar recarga</h2>
+    <span class="small muted">Com quantos tracinhos estava quando ligou na tomada?</span>
+    ${batteryHTML(1, { picker: true, name: 'chg' })}
+    <div class="field"><label class="label" for="chgHours">Horas na tomada (opcional)</label>
+      <input id="chgHours" type="number" inputmode="decimal" min="0" step="0.5" placeholder="Ex.: 5"></div>
+    <button class="primary block" id="addChg">Salvar recarga</button>
+    <p class="note">Com as horas, o app usa a potência do carregador (${fmt(S.settings.kwCarregador * 1000, 0)} W). Sem as horas, estima pelos tracinhos que faltavam.</p>
+  </section>
+  <section class="panel">
+    <h2>Histórico</h2>
+    ${list.length ? `<div class="trips">${list.map(c => `
+      <div class="trip" style="grid-template-columns:62px 1fr auto">
+        ${batteryHTML(c.dashFrom, { mini: true })}
+        <div><div class="num" style="font-size:20px">${fmt(chargeKwh(c), 2)} kWh · ${brl(chargeKwh(c) * S.settings.preco)}</div>
+        <div class="small muted">${dia(c.date)} · ${hora(c.date)}${c.hours ? ` · ${fmt(c.hours, 1)} h` : ''}</div></div>
+        <button class="x" data-delc="${c.id}" aria-label="Apagar recarga">×</button>
+      </div>`).join('')}</div>`
+    : `<div class="empty"><strong>Nenhuma recarga registrada</strong><span class="small muted">Registre quando colocar a moto pra carregar.</span></div>`}
+  </section>`;
+}
+
+function viewSettings() {
+  const s = S.settings;
+  const f = (id, label, val, step, hint = '') => `<div class="field"><label class="label" for="${id}">${label}</label>
+    <input id="${id}" data-set="${id}" type="number" inputmode="decimal" step="${step}" value="${val}">${hint ? `<span class="small muted">${hint}</span>` : ''}</div>`;
+  return `
+  <header><h1>Ajustes</h1></header>
+  <section class="panel">
+    <h2>Moto</h2>
+    <div class="grid2">
+      ${f('volts', 'Voltagem (V)', s.volts, 1, 'Carregador 67,2 V = bateria de 60 V')}
+      ${f('ah', 'Capacidade (Ah)', s.ah, 1, 'Veja na etiqueta da bateria')}
+      ${f('odo', 'Km antes do app', s.odo, 1)}
+      ${f('tracos', 'Tracinhos cheia', s.tracos, 1)}
+    </div>
+    <p class="note">Bateria de ${fmt(s.volts * s.ah / 1000, 2)} kWh. Se não achar os Ah, deixe 20 (o mais comum nessas motos de 60 V).</p>
+  </section>
+  <section class="panel">
+    <h2>Energia</h2>
+    <div class="grid2">
+      ${f('preco', 'Preço do kWh (R$)', s.preco, 0.01, 'Está na conta de luz')}
+      ${f('kwCarregador', 'Carregador (kW)', s.kwCarregador, 0.01, 'JN-60: até 0,215 kW')}
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Backup</h2>
+    <p class="small muted">Os dados ficam só neste iPhone. Salve um backup de vez em quando.</p>
+    <div class="grid2">
+      <button class="ghost" id="exp">Salvar backup</button>
+      <label class="btn" style="border:1px solid var(--line);background:transparent" for="imp">Restaurar</label>
+    </div>
+    <input id="imp" type="file" accept="application/json,.json" hidden>
+    <button class="danger block" id="wipe">Apagar tudo</button>
+  </section>
+  <p class="small muted" style="text-align:center">${S.trips.length} viagens · ${S.charges.length} recargas</p>`;
+}
+
+/* ---------- Janelas ---------- */
+function sheet(html, onBind) {
+  const bg = document.createElement('div'); bg.className = 'sheet-bg';
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+  bg.onclick = e => { if (e.target === bg) bg.remove(); };
+  $('#layer').appendChild(bg);
+  onBind(bg.firstElementChild, () => bg.remove());
+}
+function askConfirm(title, text, okLabel, onOk) {
+  sheet(`<h2>${esc(title)}</h2><p class="muted" style="margin:0">${esc(text)}</p>
+    <div class="grid2"><button class="ghost" data-x>Voltar</button><button class="danger" data-ok>${esc(okLabel)}</button></div>`,
+    (el, close) => { el.querySelector('[data-x]').onclick = close; el.querySelector('[data-ok]').onclick = () => { close(); onOk(); }; });
+}
+
+/* ---------- Eventos ---------- */
+let pick = {};
+function bind() {
+  const app = $('#app');
+  pick = { ini: S.trips[S.trips.length - 1]?.dashEnd ?? S.settings.tracos, chg: 1 };
+  bindPickers(app, (n, v) => pick[n] = v);
+
+  $('#go') && ($('#go').onclick = () => startTrip(pick.ini));
+  $('#end') && ($('#end').onclick = () => {
+    sheet(`<h2>Fim da viagem</h2><span class="muted">Quantos tracinhos sobraram?</span>${batteryHTML(S.active.dashStart, { picker: true, name: 'fim' })}
+      <button class="primary block" data-ok>Salvar viagem</button><button class="ghost block" data-x>Continuar rodando</button>`,
+      (el, close) => { let v = S.active.dashStart; bindPickers(el, (_, x) => v = x);
+        el.querySelector('[data-x]').onclick = close; el.querySelector('[data-ok]').onclick = () => { close(); finishTrip(v); }; });
+  });
+  $('#cancel') && ($('#cancel').onclick = () => askConfirm('Descartar viagem?', 'Os quilômetros desta viagem não serão salvos.', 'Descartar', cancelTrip));
+  if (S.active && tab === 'viagem') renderLive();
+
+  app.querySelectorAll('[data-chart]').forEach(b => b.onclick = () => { chartMode = b.dataset.chart; render(); });
+  app.querySelectorAll('[data-del]').forEach(b => b.onclick = () => askConfirm('Apagar viagem?', 'Ela sai do relatório e do hodômetro.', 'Apagar', () => {
+    S.trips = S.trips.filter(t => t.id !== +b.dataset.del); save(); render(); }));
+  app.querySelectorAll('[data-delc]').forEach(b => b.onclick = () => askConfirm('Apagar recarga?', 'Ela sai do custo do mês.', 'Apagar', () => {
+    S.charges = S.charges.filter(c => c.id !== +b.dataset.delc); save(); render(); }));
+
+  $('#manual') && ($('#manual').onclick = () => {
+    const hoje = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    sheet(`<h2>Viagem manual</h2>
+      <div class="grid2"><div class="field"><label class="label" for="mDate">Data</label><input id="mDate" type="date" value="${hoje}"></div>
+      <div class="field"><label class="label" for="mKm">Km</label><input id="mKm" type="number" inputmode="decimal" step="0.1" placeholder="Ex.: 12,5"></div></div>
+      <span class="label">Bateria na saída</span>${batteryHTML(S.settings.tracos, { picker: true, name: 'ms' })}
+      <span class="label">Bateria na chegada</span>${batteryHTML(S.settings.tracos, { picker: true, name: 'me' })}
+      <button class="primary block" data-ok>Salvar</button>`,
+      (el, close) => { const v = { ms: S.settings.tracos, me: S.settings.tracos }; bindPickers(el, (n, x) => v[n] = x);
+        el.querySelector('[data-ok]').onclick = () => {
+          const km = parseFloat(String(el.querySelector('#mKm').value).replace(',', '.'));
+          if (!(km > 0)) { toast('Digite os quilômetros'); return; }
+          const d = el.querySelector('#mDate').value; const start = d ? new Date(d + 'T12:00').getTime() : Date.now();
+          S.trips.push({ id: Date.now(), start, end: start, km, movingSec: 0, maxKmh: 0, dashStart: v.ms, dashEnd: v.me, route: [], manual: true });
+          save(); close(); render(); toast('Viagem adicionada');
+        }; });
+  });
+
+  $('#copy') && ($('#copy').onclick = async () => {
+    const all = stats(S.trips), mes = stats(inPeriod(S.trips, monthStart()));
+    const txt = [`Moto KM · ${new Date().toLocaleDateString('pt-BR')}`, `Hodômetro: ${fmt(S.settings.odo + all.km, 1)} km`,
+      `Este mês: ${fmt(mes.km, 1)} km em ${mes.n} viagens`,
+      all.kmPorTraco ? `Autonomia: ~${fmt(all.autonomia, 0)} km por carga · ${fmt(all.whKm, 0)} Wh/km · ${brl(all.custoKm)}/km` : 'Consumo: ainda sem dados suficientes'].join('\n');
+    try { await navigator.clipboard.writeText(txt); toast('Resumo copiado'); } catch (e) { toast('Não deu pra copiar'); }
+  });
+
+  $('#addChg') && ($('#addChg').onclick = () => {
+    const h = parseFloat(String($('#chgHours').value).replace(',', '.'));
+    S.charges.push({ id: Date.now(), date: Date.now(), dashFrom: pick.chg, hours: h > 0 ? h : null });
+    save(); render(); toast('Recarga salva');
+  });
+
+  app.querySelectorAll('[data-set]').forEach(i => i.onchange = () => {
+    const v = parseFloat(String(i.value).replace(',', '.'));
+    if (!(v >= 0)) { toast('Valor inválido'); i.value = S.settings[i.dataset.set]; return; }
+    S.settings[i.dataset.set] = i.dataset.set === 'tracos' ? Math.max(1, Math.min(10, Math.round(v))) : v;
+    save(); toast('Salvo');
+  });
+  $('#exp') && ($('#exp').onclick = () => {
+    const blob = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `moto-km-backup-${new Date().toISOString().slice(0, 10)}.json`; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+  $('#imp') && ($('#imp').onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    file.text().then(t => { const d = JSON.parse(t); if (!Array.isArray(d.trips)) throw 0;
+      S = { ...JSON.parse(JSON.stringify(DEF)), ...d, settings: { ...DEF.settings, ...(d.settings || {}) }, active: null };
+      save(); render(); toast('Backup restaurado'); }).catch(() => toast('Arquivo de backup inválido'));
+  });
+  $('#wipe') && ($('#wipe').onclick = () => askConfirm('Apagar tudo?', 'Todas as viagens, recargas e ajustes somem deste iPhone. Não tem como desfazer.', 'Apagar tudo', () => {
+    S = JSON.parse(JSON.stringify(DEF)); save(); render(); toast('Tudo apagado'); }));
+}
+
+/* ---------- Início ---------- */
+render();
+if (S.active) { beginWatch(); toast('Viagem em andamento retomada'); }
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+try { navigator.storage?.persist?.(); } catch (e) {}
+</script>
+</body>
+</html>
