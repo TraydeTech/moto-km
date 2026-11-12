@@ -219,23 +219,46 @@ function inPeriod(list, from) { return list.filter(x => (x.start ?? x.date) >= f
 function monthStart() { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d.getTime(); }
 
 /* ---------- GPS ---------- */
-let watchId = null, wake = null, ticker = null, lastSave = 0;
+// No app do iPhone (Capacitor) o GPS nativo continua com a tela bloqueada, igual ao Strava.
+// No site (PWA) o iOS pausa o GPS quando a tela apaga; aí o trecho perdido é estimado em linha reta.
+const CAP = window.Capacitor;
+const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+const BG = NATIVE ? (typeof CAP.registerPlugin === 'function' ? CAP.registerPlugin('BackgroundGeolocation') : CAP.Plugins?.BackgroundGeolocation) : null;
+let watchId = null, watchToken = 0, wake = null, ticker = null, lastSave = 0;
 
 function startTrip(dash) {
   S.active = { start: Date.now(), dashStart: dash, m: 0, movingMs: 0, maxKmh: 0, last: null, lastT: null, route: [], speed: 0, acc: null, gps: 'aguardando' };
   save(); beginWatch(); render();
 }
 function beginWatch() {
-  if (!('geolocation' in navigator)) { toast('Este navegador não tem acesso ao GPS'); return; }
-  if (watchId != null) navigator.geolocation.clearWatch(watchId);
-  S.active.last = null; // evita somar o trecho em que o app ficou fechado
-  watchId = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+  clearGps();
+  if (BG) {
+    const token = ++watchToken;
+    BG.addWatcher({
+      backgroundMessage: 'Medindo a viagem', backgroundTitle: 'Moto KM',
+      requestPermissions: true, stale: false, distanceFilter: 0
+    }, (loc, err) => {
+      if (token !== watchToken) return;
+      if (err) { onErr({ code: err.code === 'NOT_AUTHORIZED' ? 1 : 2 }); return; }
+      if (loc) onPos({ coords: { latitude: loc.latitude, longitude: loc.longitude, accuracy: loc.accuracy, speed: loc.speed }, timestamp: loc.time || Date.now() });
+    }).then(id => { if (token === watchToken) watchId = id; else BG.removeWatcher({ id }).catch(() => {}); })
+      .catch(() => { toast('Não consegui ligar o GPS'); });
+  } else if ('geolocation' in navigator) {
+    watchId = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+  } else { toast('Este navegador não tem acesso ao GPS'); return; }
   requestWake();
   clearInterval(ticker); ticker = setInterval(renderLive, 1000);
 }
+function clearGps() {
+  watchToken++;
+  if (watchId != null) {
+    if (BG) BG.removeWatcher({ id: watchId }).catch(() => {});
+    else navigator.geolocation.clearWatch(watchId);
+  }
+  watchId = null;
+}
 function stopWatch() {
-  if (watchId != null) navigator.geolocation.clearWatch(watchId);
-  watchId = null; clearInterval(ticker); ticker = null;
+  clearGps(); clearInterval(ticker); ticker = null;
   try { wake?.release(); } catch (e) {} wake = null;
 }
 async function requestWake() {
@@ -243,6 +266,7 @@ async function requestWake() {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && S.active) { requestWake(); renderLive(); }
+  if (document.visibilityState === 'hidden' && S.active) save(); // guarda antes do iOS pausar ou fechar o app
 });
 
 function onErr(e) {
@@ -262,13 +286,18 @@ function onPos(p) {
   const d = dist(A.last, pt), dt = (t - A.lastT) / 1000;
   if (dt <= 0) return;
   const vCalc = d / dt * 3.6;
-  const v = (c.speed != null && c.speed >= 0) ? c.speed * 3.6 : vCalc;
+  const gap = dt > 30;                           // GPS ficou parado (tela bloqueada no site ou app fechado)
+  const v = gap ? 0 : (c.speed != null && c.speed >= 0) ? c.speed * 3.6 : vCalc;
   if (vCalc > 100) return;                       // salto do GPS, ignora
   if (d < Math.max(4, c.accuracy * 0.4)) {       // parado ou tremida do GPS
     A.speed = v < 3 ? 0 : v; renderLive(); return;
   }
   A.m += d;
-  if (vCalc > 2) A.movingMs += Math.min(dt, 30) * 1000;
+  if (gap) {                                     // soma o trecho perdido em linha reta
+    if (vCalc > 5) A.movingMs += dt * 1000;
+    A.estM = (A.estM || 0) + d;
+    if (d >= 100) toast(`GPS ficou pausado ${dur(dt)}: somei ${fmt(d / 1000, 2)} km em linha reta`);
+  } else if (vCalc > 2) A.movingMs += dt * 1000;
   A.maxKmh = Math.max(A.maxKmh, Math.min(v, 100));
   A.speed = v; A.last = pt; A.lastT = t;
   pushRoute(A, pt); persist(); renderLive();
@@ -284,7 +313,7 @@ function finishTrip(dashEnd) {
   const A = S.active; if (!A) return;
   stopWatch();
   const trip = { id: Date.now(), start: A.start, end: Date.now(), km: A.m / 1000, movingSec: A.movingMs / 1000,
-    maxKmh: A.maxKmh, dashStart: A.dashStart, dashEnd, route: A.route };
+    maxKmh: A.maxKmh, dashStart: A.dashStart, dashEnd, route: A.route, estKm: (A.estM || 0) / 1000 };
   S.active = null;
   if (trip.km >= 0.05) { S.trips.push(trip); toast(`Viagem salva: ${fmt(trip.km, 2)} km`); }
   else toast('Viagem muito curta, não foi salva');
@@ -332,7 +361,9 @@ function viewStart() {
     <span class="small muted">Quantos tracinhos o painel mostra agora?</span>
     ${batteryHTML(last?.dashEnd ?? S.settings.tracos, { picker: true, name: 'ini' })}
     <button class="primary block" id="go">Iniciar viagem</button>
-    <p class="note">Deixe o celular no suporte com a tela ligada. Com a tela apagada o iPhone para de mandar o GPS para o app.</p>
+    <p class="note">${NATIVE
+      ? 'Pode bloquear a tela e guardar o celular: o GPS continua medindo. Na primeira vez, permita o acesso à localização.'
+      : 'No site, o iPhone pausa o GPS com a tela bloqueada e o trecho é estimado em linha reta. Para medir certinho com a tela bloqueada, use o app Moto KM instalado pelo Xcode/TestFlight.'}</p>
   </section>
   ${st.autonomia ? `<section class="panel"><div class="grid2">
       <div class="stat"><span class="label">Autonomia estimada</span><span class="num">${fmt(st.autonomia, 0)}<span class="unit">km</span></span></div>
@@ -622,7 +653,7 @@ function bind() {
 /* ---------- Início ---------- */
 render();
 if (S.active) { beginWatch(); toast('Viagem em andamento retomada'); }
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (!NATIVE && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 try { navigator.storage?.persist?.(); } catch (e) {}
 </script>
 </body>

@@ -1,0 +1,9 @@
+{
+  "appId": "br.motokm.app",
+  "appName": "Moto KM",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0E1114"
+  }
+}
