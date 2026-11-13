@@ -9,7 +9,13 @@ Existem duas formas de usar:
 | GPS com a tela bloqueada | ❌ o iOS pausa; o trecho é estimado em linha reta | ✅ continua medindo, igual ao Strava |
 | Instalação | abrir o site no Safari → Compartilhar → Tela de Início | Xcode (Mac) ou TestFlight |
 
-O iPhone **não deixa sites usarem o GPS com a tela bloqueada**. Por isso o Strava é um app nativo. O app nativo aqui usa o [Capacitor](https://capacitorjs.com) com o plugin `@capacitor-community/background-geolocation`, que liga o modo "localização em segundo plano" do iOS (a seta azul no topo da tela).
+O iPhone **não deixa sites usarem o GPS com a tela bloqueada**. Por isso o Strava é um app nativo. ## Mapa e perigos no caminho
+
+Na aba **Mapa** aparecem as rotas das viagens e os perigos marcados (fio caído, buraco, alagamento, obra, acidente). Para marcar: botão **Avisar perigo aqui** (usa o GPS) ou segurar o dedo no mapa. Durante a viagem o app avisa com voz quando chega a 200 m de um perigo. Por enquanto os avisos ficam só neste aparelho; o compartilhamento entre usuários (com login) vem numa próxima etapa.
+
+O mapa usa OpenStreetMap/CARTO e precisa de internet.
+
+O app nativo aqui usa o [Capacitor](https://capacitorjs.com) com o plugin `@capacitor-community/background-geolocation`, que liga o modo "localização em segundo plano" do iOS (a seta azul no topo da tela).
 
 ## Gerar o app do iPhone
 

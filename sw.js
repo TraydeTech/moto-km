@@ -1,5 +1,5 @@
 // Guarda o app no aparelho para abrir sem internet.
-const CACHE = 'motokm-v2';
+const CACHE = 'motokm-v3';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
