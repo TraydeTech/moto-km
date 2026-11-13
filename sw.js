@@ -1,6 +1,6 @@
 // Guarda o app no aparelho para abrir sem internet.
-const CACHE = 'motokm-v4';
-const FILES = ['./', './index.html', './manifest.webmanifest', './icon-512.png', './apple-touch-icon.png', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css'];
+const CACHE = 'motokm-v5';
+const FILES = ['./', './index.html', './manifest.webmanifest', './icon-512.png', './apple-touch-icon.png', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css', './vendor/maplibre/maplibre-gl.js', './vendor/maplibre/maplibre-gl.css', './vendor/maplibre/leaflet-maplibre-gl.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));

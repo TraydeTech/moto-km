@@ -428,7 +428,11 @@ function loadLeaflet() {
   });
   return leafletP || (leafletP = Promise.all([
     add('link', { rel: 'stylesheet', href: 'vendor/leaflet/leaflet.css' }),
+    add('link', { rel: 'stylesheet', href: 'vendor/maplibre/maplibre-gl.css' }),
     add('script', { src: 'vendor/leaflet/leaflet.js' })
+      .then(() => add('script', { src: 'vendor/maplibre/maplibre-gl.js' }))
+      .then(() => add('script', { src: 'vendor/maplibre/leaflet-maplibre-gl.js' }))
+      .catch(() => { if (!window.L) throw new Error('leaflet'); }) // sem MapLibre, usa o mapa simples
   ]).catch(e => { leafletP = null; throw e; }));
 }
 function hzIcon(h) {
@@ -447,20 +451,28 @@ function initMap() {
     if (tab !== 'mapa' || !document.body.contains(box)) return;
     const dark = matchMedia('(prefers-color-scheme: dark)').matches;
     mapObj = L.map(box, { zoomControl: true, attributionControl: true }).setView([-15.8, -47.9], 4);
-    // Mapa da CARTO; se não carregar, troca para o servidor do OpenStreetMap.
-    let ok = 0, bad = 0, swapped = false;
-    const carto = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`, {
-      maxZoom: 19, subdomains: 'abcd', attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · © <a href="https://carto.com/attributions">CARTO</a>'
-    }).addTo(mapObj);
-    carto.on('tileload', () => ok++);
-    carto.on('tileerror', () => {
-      if (++bad < 4 || ok || swapped || !mapObj) return;
-      swapped = true; mapObj.removeLayer(carto);
-      const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(mapObj);
-      let osmBad = 0, osmOk = 0;
-      osm.on('tileload', () => osmOk++);
-      osm.on('tileerror', () => { if (++osmBad === 4 && !osmOk) toast('O mapa não carregou. Confira a internet do celular.'); });
-    });
+    // Mapa da OpenFreeMap: grátis e sem chave (funciona dentro do app do iPhone).
+    // Se o celular não tiver WebGL ou o mapa não carregar, usa os quadros do OpenStreetMap.
+    const OSM_ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+    const useOsm = () => { if (mapObj && !mapObj._osm) { mapObj._osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: OSM_ATTR }).addTo(mapObj); } };
+    let gl = null;
+    try {
+      const webgl = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
+      if (!L.maplibreGL || !window.maplibregl || !webgl) throw 0;
+      const style = n => `https://tiles.openfreemap.org/styles/${n}`;
+      const OFM_ATTR = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> · ' + OSM_ATTR;
+      gl = L.maplibreGL({ style: style(dark ? 'dark' : 'liberty') }).addTo(mapObj);
+      mapObj.attributionControl.addAttribution(OFM_ATTR);
+      gl.on('remove', () => mapObj?.attributionControl.removeAttribution(OFM_ATTR));
+      const m = gl.getMaplibreMap();
+      let loaded = false, triedLight = !dark;
+      m.on('load', () => { loaded = true; });
+      m.on('error', () => {
+        if (loaded || !mapObj) return;
+        if (!triedLight) { triedLight = true; m.setStyle(style('liberty')); return; }
+        mapObj.removeLayer(gl); gl = null; useOsm();
+      });
+    } catch (e) { if (gl) mapObj.removeLayer(gl); useOsm(); }
     setTimeout(() => mapObj?.invalidateSize(), 300);
 
     const bounds = [];
