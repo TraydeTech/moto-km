@@ -421,13 +421,15 @@ function reportSheet(at) {
 let leafletP = null, mapObj = null, mapFocus = null;
 function loadLeaflet() {
   if (window.L) return Promise.resolve();
-  return leafletP || (leafletP = new Promise((ok, no) => {
-    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
-    document.head.appendChild(css);
-    const js = document.createElement('script'); js.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
-    js.onload = ok; js.onerror = () => { leafletP = null; js.remove(); no(); };
-    document.head.appendChild(js);
-  }));
+  // A biblioteca do mapa vem junto com o app (vendor/), não depende de CDN.
+  const add = (tag, attrs) => new Promise((ok, no) => {
+    const el = Object.assign(document.createElement(tag), attrs); el.onload = ok; el.onerror = () => { el.remove(); no(); };
+    document.head.appendChild(el);
+  });
+  return leafletP || (leafletP = Promise.all([
+    add('link', { rel: 'stylesheet', href: 'vendor/leaflet/leaflet.css' }),
+    add('script', { src: 'vendor/leaflet/leaflet.js' })
+  ]).catch(e => { leafletP = null; throw e; }));
 }
 function hzIcon(h) {
   const t = HZ[h.type] || HZ.outro;
@@ -445,9 +447,21 @@ function initMap() {
     if (tab !== 'mapa' || !document.body.contains(box)) return;
     const dark = matchMedia('(prefers-color-scheme: dark)').matches;
     mapObj = L.map(box, { zoomControl: true, attributionControl: true }).setView([-15.8, -47.9], 4);
-    L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`, {
+    // Mapa da CARTO; se não carregar, troca para o servidor do OpenStreetMap.
+    let ok = 0, bad = 0, swapped = false;
+    const carto = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`, {
       maxZoom: 19, subdomains: 'abcd', attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · © <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(mapObj);
+    carto.on('tileload', () => ok++);
+    carto.on('tileerror', () => {
+      if (++bad < 4 || ok || swapped || !mapObj) return;
+      swapped = true; mapObj.removeLayer(carto);
+      const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(mapObj);
+      let osmBad = 0, osmOk = 0;
+      osm.on('tileload', () => osmOk++);
+      osm.on('tileerror', () => { if (++osmBad === 4 && !osmOk) toast('O mapa não carregou. Confira a internet do celular.'); });
+    });
+    setTimeout(() => mapObj?.invalidateSize(), 300);
 
     const bounds = [];
     const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#B45309';
