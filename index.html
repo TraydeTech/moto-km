@@ -131,6 +131,11 @@ button.warn{background:var(--low);color:#fff}
 .leaflet-popup-content{font:14px/1.4 var(--body);margin:12px 14px}
 .leaflet-popup-content .acts{display:flex;gap:6px;margin-top:8px}
 .trip[data-trip]{cursor:pointer}
+.map-info{display:flex;align-items:center;gap:6px;margin:0 8px 8px 0}
+.map-info button{width:26px;height:26px;min-height:0;padding:0;border-radius:50%;font:700 14px/1 Georgia,serif;font-style:italic;
+  background:rgba(255,255,255,.85);color:#333;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.map-info span{background:rgba(255,255,255,.9);color:#333;font-size:11px;padding:4px 8px;border-radius:8px}
+.map-info a{color:#1d4ed8}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted)}
 @media (max-width:360px){.gauge .speed{font-size:88px}.grid3{grid-template-columns:1fr 1fr}}
 @media (prefers-reduced-motion:no-preference){button{transition:transform .08s}button:active{transform:scale(.97)}}
@@ -450,7 +455,16 @@ function initMap() {
   loadLeaflet().then(() => {
     if (tab !== 'mapa' || !document.body.contains(box)) return;
     const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-    mapObj = L.map(box, { zoomControl: true, attributionControl: true }).setView([-15.8, -47.9], 4);
+    mapObj = L.map(box, { zoomControl: true, attributionControl: false }).setView([-15.8, -47.9], 4);
+    // Créditos do mapa (exigidos pela licença do OpenStreetMap) num botão "i" pequeno.
+    const Info = L.Control.extend({ options: { position: 'bottomright' }, onAdd() {
+      const d = L.DomUtil.create('div', 'map-info');
+      d.innerHTML = '<span hidden>© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · <a href="https://openfreemap.org" target="_blank">OpenFreeMap</a></span><button type="button" aria-label="Créditos do mapa">i</button>';
+      L.DomEvent.disableClickPropagation(d);
+      d.querySelector('button').onclick = () => { const t = d.querySelector('span'); t.hidden = !t.hidden; };
+      return d;
+    } });
+    new Info().addTo(mapObj);
     // Mapa da OpenFreeMap: grátis e sem chave (funciona dentro do app do iPhone).
     // Se o celular não tiver WebGL ou o mapa não carregar, usa os quadros do OpenStreetMap.
     const OSM_ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -460,10 +474,7 @@ function initMap() {
       const webgl = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
       if (!L.maplibreGL || !window.maplibregl || !webgl) throw 0;
       const style = n => `https://tiles.openfreemap.org/styles/${n}`;
-      const OFM_ATTR = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> · ' + OSM_ATTR;
       gl = L.maplibreGL({ style: style(dark ? 'dark' : 'liberty') }).addTo(mapObj);
-      mapObj.attributionControl.addAttribution(OFM_ATTR);
-      gl.on('remove', () => mapObj?.attributionControl.removeAttribution(OFM_ATTR));
       const m = gl.getMaplibreMap();
       let loaded = false, triedLight = !dark;
       m.on('load', () => { loaded = true; });
