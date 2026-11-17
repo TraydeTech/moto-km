@@ -111,6 +111,32 @@ nav button[aria-current="page"]{color:var(--accent)}
   padding:10px 16px;border-radius:10px;font-weight:600;z-index:30;max-width:90vw;text-align:center}
 .empty{text-align:center;padding:24px 8px;display:flex;flex-direction:column;gap:8px;align-items:center}
 .note{font-size:13px;color:var(--muted);border-left:3px solid var(--accent);padding-left:10px}
+/* Mapa e perigos */
+.map-panel{padding:0;overflow:hidden;isolation:isolate;position:relative;z-index:0}
+#map{height:56vh;min-height:320px;background:var(--seg-off)}
+.map-msg{height:56vh;min-height:320px;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}
+.hz-pin{width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--c);display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);border:2px solid #fff}
+.hz-pin span{transform:rotate(45deg);font-size:17px;line-height:1}
+.me-dot{width:18px;height:18px;border-radius:50%;background:#2563EB;border:3px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25)}
+.hz-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.hz-grid button{flex-direction:column;gap:4px;min-height:84px;padding:10px 6px;font-size:13px;background:var(--bg);border:1px solid var(--line)}
+.hz-grid button .ic{font-size:28px;line-height:1}
+button.warn{background:var(--low);color:#fff}
+.hz-item{display:grid;grid-template-columns:36px 1fr;gap:10px;align-items:start;padding-block:12px;border-top:1px solid var(--line)}
+.hz-item:first-child{border-top:0}
+.hz-item .ic{font-size:26px;line-height:1.2;text-align:center}
+.hz-item .acts{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.hz-item .acts button,.leaflet-popup-content button{min-height:36px;padding:6px 12px;font-size:13px}
+.leaflet-popup-content{font:14px/1.4 var(--body);margin:12px 14px}
+.leaflet-popup-content .acts{display:flex;gap:6px;margin-top:8px}
+.trip[data-trip]{cursor:pointer}
+.map-info{display:flex;align-items:center;gap:6px;margin:0 8px 8px 0}
+.map-info button{width:26px;height:26px;min-height:0;padding:0;border-radius:50%;font:700 14px/1 Georgia,serif;font-style:italic;
+  background:rgba(255,255,255,.85);color:#333;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.map-info span{background:rgba(255,255,255,.9);color:#333;font-size:11px;padding:4px 8px;border-radius:8px}
+.map-info a{color:#1d4ed8}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted)}
 @media (max-width:360px){.gauge .speed{font-size:88px}.grid3{grid-template-columns:1fr 1fr}}
 @media (prefers-reduced-motion:no-preference){button{transition:transform .08s}button:active{transform:scale(.97)}}
 </style>
@@ -126,7 +152,7 @@ nav button[aria-current="page"]{color:var(--accent)}
 const KEY = 'motokm:v1';
 const DEF = {
   settings: { preco: 0.90, ah: 20, volts: 60, efic: 0.85, odo: 0, tracos: 5, kwCarregador: 0.2 },
-  trips: [], charges: [], active: null
+  trips: [], charges: [], hazards: [], active: null
 };
 let S = load();
 let tab = 'viagem';
@@ -221,23 +247,46 @@ function inPeriod(list, from) { return list.filter(x => (x.start ?? x.date) >= f
 function monthStart() { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d.getTime(); }
 
 /* ---------- GPS ---------- */
-let watchId = null, wake = null, ticker = null, lastSave = 0;
+// No app do iPhone (Capacitor) o GPS nativo continua com a tela bloqueada, igual ao Strava.
+// No site (PWA) o iOS pausa o GPS quando a tela apaga; aí o trecho perdido é estimado em linha reta.
+const CAP = window.Capacitor;
+const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+const BG = NATIVE ? (typeof CAP.registerPlugin === 'function' ? CAP.registerPlugin('BackgroundGeolocation') : CAP.Plugins?.BackgroundGeolocation) : null;
+let watchId = null, watchToken = 0, wake = null, ticker = null, lastSave = 0;
 
 function startTrip(dash) {
   S.active = { start: Date.now(), dashStart: dash, m: 0, movingMs: 0, maxKmh: 0, last: null, lastT: null, route: [], speed: 0, acc: null, gps: 'aguardando' };
   save(); beginWatch(); render();
 }
 function beginWatch() {
-  if (!('geolocation' in navigator)) { toast('Este navegador não tem acesso ao GPS'); return; }
-  if (watchId != null) navigator.geolocation.clearWatch(watchId);
-  S.active.last = null; // evita somar o trecho em que o app ficou fechado
-  watchId = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+  clearGps();
+  if (BG) {
+    const token = ++watchToken;
+    BG.addWatcher({
+      backgroundMessage: 'Medindo a viagem', backgroundTitle: 'Moto KM',
+      requestPermissions: true, stale: false, distanceFilter: 0
+    }, (loc, err) => {
+      if (token !== watchToken) return;
+      if (err) { onErr({ code: err.code === 'NOT_AUTHORIZED' ? 1 : 2 }); return; }
+      if (loc) onPos({ coords: { latitude: loc.latitude, longitude: loc.longitude, accuracy: loc.accuracy, speed: loc.speed }, timestamp: loc.time || Date.now() });
+    }).then(id => { if (token === watchToken) watchId = id; else BG.removeWatcher({ id }).catch(() => {}); })
+      .catch(() => { toast('Não consegui ligar o GPS'); });
+  } else if ('geolocation' in navigator) {
+    watchId = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+  } else { toast('Este navegador não tem acesso ao GPS'); return; }
   requestWake();
   clearInterval(ticker); ticker = setInterval(renderLive, 1000);
 }
+function clearGps() {
+  watchToken++;
+  if (watchId != null) {
+    if (BG) BG.removeWatcher({ id: watchId }).catch(() => {});
+    else navigator.geolocation.clearWatch(watchId);
+  }
+  watchId = null;
+}
 function stopWatch() {
-  if (watchId != null) navigator.geolocation.clearWatch(watchId);
-  watchId = null; clearInterval(ticker); ticker = null;
+  clearGps(); clearInterval(ticker); ticker = null;
   try { wake?.release(); } catch (e) {} wake = null;
 }
 async function requestWake() {
@@ -245,6 +294,7 @@ async function requestWake() {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && S.active) { requestWake(); renderLive(); }
+  if (document.visibilityState === 'hidden' && S.active) save(); // guarda antes do iOS pausar ou fechar o app
 });
 
 function onErr(e) {
@@ -259,21 +309,26 @@ function onPos(p) {
   if (c.accuracy > 30) { A.gps = 'fraco'; renderLive(); return; }
   A.gps = 'ok';
   const pt = [c.latitude, c.longitude];
-  if (!A.last) { A.last = pt; A.lastT = t; pushRoute(A, pt); persist(); renderLive(); return; }
+  if (!A.last) { A.last = pt; A.lastT = t; pushRoute(A, pt); checkHazards(pt); persist(); renderLive(); return; }
 
   const d = dist(A.last, pt), dt = (t - A.lastT) / 1000;
   if (dt <= 0) return;
   const vCalc = d / dt * 3.6;
-  const v = (c.speed != null && c.speed >= 0) ? c.speed * 3.6 : vCalc;
+  const gap = dt > 30;                           // GPS ficou parado (tela bloqueada no site ou app fechado)
+  const v = gap ? 0 : (c.speed != null && c.speed >= 0) ? c.speed * 3.6 : vCalc;
   if (vCalc > 100) return;                       // salto do GPS, ignora
   if (d < Math.max(4, c.accuracy * 0.4)) {       // parado ou tremida do GPS
     A.speed = v < 3 ? 0 : v; renderLive(); return;
   }
   A.m += d;
-  if (vCalc > 2) A.movingMs += Math.min(dt, 30) * 1000;
+  if (gap) {                                     // soma o trecho perdido em linha reta
+    if (vCalc > 5) A.movingMs += dt * 1000;
+    A.estM = (A.estM || 0) + d;
+    if (d >= 100) toast(`GPS ficou pausado ${dur(dt)}: somei ${fmt(d / 1000, 2)} km em linha reta`);
+  } else if (vCalc > 2) A.movingMs += dt * 1000;
   A.maxKmh = Math.max(A.maxKmh, Math.min(v, 100));
   A.speed = v; A.last = pt; A.lastT = t;
-  pushRoute(A, pt); persist(); renderLive();
+  pushRoute(A, pt); checkHazards(pt); persist(); renderLive();
 }
 function pushRoute(A, pt) {
   const r = A.route, p = [+pt[0].toFixed(5), +pt[1].toFixed(5)];
@@ -286,7 +341,7 @@ function finishTrip(dashEnd) {
   const A = S.active; if (!A) return;
   stopWatch();
   const trip = { id: Date.now(), start: A.start, end: Date.now(), km: A.m / 1000, movingSec: A.movingMs / 1000,
-    maxKmh: A.maxKmh, dashStart: A.dashStart, dashEnd, route: A.route };
+    maxKmh: A.maxKmh, dashStart: A.dashStart, dashEnd, route: A.route, estKm: (A.estM || 0) / 1000 };
   S.active = null;
   if (trip.km >= 0.05) { S.trips.push(trip); toast(`Viagem salva: ${fmt(trip.km, 2)} km`); }
   else toast('Viagem muito curta, não foi salva');
@@ -294,9 +349,185 @@ function finishTrip(dashEnd) {
 }
 function cancelTrip() { stopWatch(); S.active = null; save(); render(); toast('Viagem descartada'); }
 
+/* ---------- Perigos no caminho ---------- */
+// Tipos de aviso e por quanto tempo valem sem ninguém confirmar.
+const HZ = {
+  fio:        { name: 'Fio caído',    ic: '⚡', c: '#DC2626', h: 24 },
+  buraco:     { name: 'Buraco',       ic: '🕳️', c: '#B45309', h: 24 * 30 },
+  alagamento: { name: 'Alagamento',   ic: '🌊', c: '#2563EB', h: 12 },
+  obra:       { name: 'Obra',         ic: '🚧', c: '#CA8A04', h: 24 * 14 },
+  acidente:   { name: 'Acidente',     ic: '💥', c: '#7C3AED', h: 6 },
+  outro:      { name: 'Outro perigo', ic: '⚠️', c: '#475569', h: 24 * 3 }
+};
+const ALERT_M = 200; // avisa quando chega a 200 m de um perigo
+const hzActive = () => S.hazards.filter(h => !h.gone && Date.now() < (h.seen || h.date) + (HZ[h.type]?.h || 24) * 3600e3);
+const ago = t => { const m = Math.round((Date.now() - t) / 60000);
+  return m < 1 ? 'agora' : m < 60 ? `há ${m} min` : m < 1440 ? `há ${Math.round(m / 60)} h` : `há ${Math.round(m / 1440)} dias`; };
+const metros = m => m < 1000 ? `${Math.round(m / 10) * 10} m` : `${fmt(m / 1000, 1)} km`;
+
+function addHazard(type, lat, lon, note) {
+  const h = { id: Date.now(), type, lat: +lat.toFixed(6), lon: +lon.toFixed(6), date: Date.now(), seen: Date.now(), note: note || '', confirms: 0, mine: true };
+  S.hazards.push(h); save();
+  toast(`${HZ[type].ic} ${HZ[type].name} marcado no mapa`);
+  return h;
+}
+function hazardStill(id) { const h = S.hazards.find(x => x.id === id); if (h) { h.seen = Date.now(); h.confirms = (h.confirms || 0) + 1; save(); toast('Obrigado! Aviso renovado'); } }
+function hazardGone(id) { const h = S.hazards.find(x => x.id === id); if (h) { h.gone = Date.now(); save(); toast('Aviso retirado do mapa'); } }
+
+// Durante a viagem: avisa uma vez por perigo quando chega perto.
+function checkHazards(pt) {
+  const A = S.active; if (!A) return;
+  A.alerted = A.alerted || [];
+  for (const h of hzActive()) {
+    if (A.alerted.includes(h.id)) continue;
+    const d = dist(pt, [h.lat, h.lon]);
+    if (d > ALERT_M) continue;
+    A.alerted.push(h.id);
+    const t = HZ[h.type];
+    toast(`${t.ic} Atenção: ${t.name.toLowerCase()} a ${metros(d)}`);
+    try { navigator.vibrate?.([300, 120, 300]); } catch (e) {}
+    try {
+      const u = new SpeechSynthesisUtterance(`Atenção: ${t.name} a ${Math.round(d / 10) * 10} metros`);
+      u.lang = 'pt-BR'; speechSynthesis.cancel(); speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+}
+
+// Onde estou agora (usa o GPS da viagem se estiver rodando).
+function hereNow() {
+  const A = S.active;
+  if (A?.last && A.lastT && Date.now() - A.lastT < 60000) return Promise.resolve({ lat: A.last[0], lon: A.last[1], acc: A.acc });
+  return new Promise((ok, no) => {
+    if (!('geolocation' in navigator)) return no(new Error('sem gps'));
+    navigator.geolocation.getCurrentPosition(p => ok({ lat: p.coords.latitude, lon: p.coords.longitude, acc: Math.round(p.coords.accuracy) }),
+      no, { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 });
+  });
+}
+
+// Janela de aviso: um toque no tipo já salva (pensado para usar na moto).
+function reportSheet(at) {
+  sheet(`<h2>Avisar perigo</h2>
+    <span class="small muted" id="hzWhere">${at ? 'No ponto escolhido no mapa' : 'Procurando sua localização…'}</span>
+    <div class="hz-grid">${Object.entries(HZ).map(([k, t]) => `<button type="button" data-hz="${k}"><span class="ic">${t.ic}</span>${t.name}</button>`).join('')}</div>
+    <div class="field"><label class="label" for="hzNote">Detalhe (opcional)</label><input id="hzNote" maxlength="120" placeholder="Ex.: fio no meio da rua, perto do mercado"></div>
+    <button class="ghost block" data-x>Cancelar</button>`,
+    (el, close) => {
+      let pos = at || null;
+      if (!pos) hereNow().then(p => { pos = p; const w = el.querySelector('#hzWhere'); if (w) w.textContent = `No seu local atual (±${p.acc} m)`; })
+        .catch(() => { const w = el.querySelector('#hzWhere'); if (w) w.textContent = 'Não achei o GPS. No mapa, segure o dedo no local para marcar.'; });
+      el.querySelector('[data-x]').onclick = close;
+      el.querySelectorAll('[data-hz]').forEach(b => b.onclick = () => {
+        if (!pos) { toast('Ainda procurando o GPS…'); return; }
+        addHazard(b.dataset.hz, pos.lat, pos.lon, el.querySelector('#hzNote').value.trim());
+        close(); if (tab === 'mapa') render();
+      });
+    });
+}
+
+/* ---------- Mapa (Leaflet + OpenStreetMap, carregado só quando abre a aba) ---------- */
+let leafletP = null, mapObj = null, mapFocus = null;
+function loadLeaflet() {
+  if (window.L) return Promise.resolve();
+  // A biblioteca do mapa vem junto com o app (vendor/), não depende de CDN.
+  const add = (tag, attrs) => new Promise((ok, no) => {
+    const el = Object.assign(document.createElement(tag), attrs); el.onload = ok; el.onerror = () => { el.remove(); no(); };
+    document.head.appendChild(el);
+  });
+  return leafletP || (leafletP = Promise.all([
+    add('link', { rel: 'stylesheet', href: 'vendor/leaflet/leaflet.css' }),
+    add('link', { rel: 'stylesheet', href: 'vendor/maplibre/maplibre-gl.css' }),
+    add('script', { src: 'vendor/leaflet/leaflet.js' })
+      .then(() => add('script', { src: 'vendor/maplibre/maplibre-gl.js' }))
+      .then(() => add('script', { src: 'vendor/maplibre/leaflet-maplibre-gl.js' }))
+      .catch(() => { if (!window.L) throw new Error('leaflet'); }) // sem MapLibre, usa o mapa simples
+  ]).catch(e => { leafletP = null; throw e; }));
+}
+function hzIcon(h) {
+  const t = HZ[h.type] || HZ.outro;
+  return L.divIcon({ className: '', html: `<div class="hz-pin" style="--c:${t.c}"><span>${t.ic}</span></div>`, iconSize: [34, 34], iconAnchor: [17, 34], popupAnchor: [0, -30] });
+}
+function hzPopup(h) {
+  const t = HZ[h.type] || HZ.outro;
+  return `<strong>${t.ic} ${t.name}</strong><div class="muted small">Marcado ${ago(h.date)}${h.confirms ? ` · confirmado ${h.confirms}x` : ''}</div>
+    ${h.note ? `<div>${esc(h.note)}</div>` : ''}
+    <div class="acts"><button type="button" data-hz-ok="${h.id}">Ainda está lá</button><button type="button" class="ghost" data-hz-gone="${h.id}">Não está mais</button></div>`;
+}
+function initMap() {
+  const box = $('#map'); if (!box) return;
+  loadLeaflet().then(() => {
+    if (tab !== 'mapa' || !document.body.contains(box)) return;
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    mapObj = L.map(box, { zoomControl: true, attributionControl: false }).setView([-15.8, -47.9], 4);
+    // Créditos do mapa (exigidos pela licença do OpenStreetMap) num botão "i" pequeno.
+    const Info = L.Control.extend({ options: { position: 'bottomright' }, onAdd() {
+      const d = L.DomUtil.create('div', 'map-info');
+      d.innerHTML = '<span hidden>© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> · <a href="https://openfreemap.org" target="_blank">OpenFreeMap</a></span><button type="button" aria-label="Créditos do mapa">i</button>';
+      L.DomEvent.disableClickPropagation(d);
+      d.querySelector('button').onclick = () => { const t = d.querySelector('span'); t.hidden = !t.hidden; };
+      return d;
+    } });
+    new Info().addTo(mapObj);
+    // Mapa da OpenFreeMap: grátis e sem chave (funciona dentro do app do iPhone).
+    // Se o celular não tiver WebGL ou o mapa não carregar, usa os quadros do OpenStreetMap.
+    const OSM_ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+    const useOsm = () => { if (mapObj && !mapObj._osm) { mapObj._osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: OSM_ATTR }).addTo(mapObj); } };
+    let gl = null;
+    try {
+      const webgl = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
+      if (!L.maplibreGL || !window.maplibregl || !webgl) throw 0;
+      const style = n => `https://tiles.openfreemap.org/styles/${n}`;
+      gl = L.maplibreGL({ style: style(dark ? 'dark' : 'liberty') }).addTo(mapObj);
+      const m = gl.getMaplibreMap();
+      let loaded = false, triedLight = !dark;
+      m.on('load', () => { loaded = true; });
+      m.on('error', () => {
+        if (loaded || !mapObj) return;
+        if (!triedLight) { triedLight = true; m.setStyle(style('liberty')); return; }
+        mapObj.removeLayer(gl); gl = null; useOsm();
+      });
+    } catch (e) { if (gl) mapObj.removeLayer(gl); useOsm(); }
+    setTimeout(() => mapObj?.invalidateSize(), 300);
+
+    const bounds = [];
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#B45309';
+    for (const t of S.trips) {
+      if (!t.route || t.route.length < 2) continue;
+      const on = mapFocus === t.id;
+      const line = L.polyline(t.route, { color: on ? '#2563EB' : accent, weight: on ? 6 : 4, opacity: mapFocus && !on ? 0.35 : 0.85 }).addTo(mapObj);
+      line.bindPopup(`<strong>${fmt(t.km, 2)} km</strong><div class="muted small">${dia(t.start)} · ${hora(t.start)}${t.movingSec ? ` · ${dur(t.movingSec)}` : ''}</div>`);
+      if (on) bounds.push(...t.route);
+    }
+    if (S.active?.route?.length > 1) L.polyline(S.active.route, { color: '#2563EB', weight: 6 }).addTo(mapObj);
+    for (const h of hzActive()) L.marker([h.lat, h.lon], { icon: hzIcon(h) }).addTo(mapObj).bindPopup(hzPopup(h));
+
+    // Segurar o dedo no mapa marca um perigo naquele ponto.
+    mapObj.on('contextmenu', e => reportSheet({ lat: e.latlng.lat, lon: e.latlng.lng }));
+
+    if (bounds.length) mapObj.fitBounds(bounds, { padding: [24, 24] });
+    else {
+      const all = S.trips.flatMap(t => t.route || []).concat(hzActive().map(h => [h.lat, h.lon]));
+      if (all.length) mapObj.fitBounds(all, { padding: [24, 24], maxZoom: 15 });
+    }
+    hereNow().then(p => {
+      if (!mapObj) return;
+      L.marker([p.lat, p.lon], { icon: L.divIcon({ className: '', html: '<div class="me-dot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }), interactive: false }).addTo(mapObj);
+      if (!bounds.length) mapObj.setView([p.lat, p.lon], 15);
+    }).catch(() => {});
+  }).catch(() => {
+    if (document.body.contains(box)) box.outerHTML = '<div class="map-msg muted">Sem internet para carregar o mapa. Os avisos continuam funcionando e aparecem aqui quando a conexão voltar.</div>';
+  });
+}
+// Botões dentro dos balões do mapa e da lista.
+document.addEventListener('click', e => {
+  const ok = e.target.closest('[data-hz-ok]'), gone = e.target.closest('[data-hz-gone]');
+  if (ok) { hazardStill(+ok.dataset.hzOk); render(); }
+  if (gone) { hazardGone(+gone.dataset.hzGone); render(); }
+});
+
 /* ---------- Telas ---------- */
 const TABS = [
   ['viagem', 'Viagem', '<circle cx="12" cy="13" r="8"/><path d="M12 13l4-4M12 3v2"/>'],
+  ['mapa', 'Mapa', '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/>'],
   ['relatorio', 'Relatório', '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'],
   ['cargas', 'Recargas', '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>'],
   ['ajustes', 'Ajustes', '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 1.2 14H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 7 2.6V2.5a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 19.4 9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 2z"/>']
@@ -304,15 +535,17 @@ const TABS = [
 function renderTabs() {
   $('#tabs').innerHTML = TABS.map(([id, name, ic]) =>
     `<button type="button" data-tab="${id}" ${tab === id ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ic}</svg>${name}</button>`).join('');
-  $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); window.scrollTo(0, 0); });
+  $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => { tab = b.dataset.tab; mapFocus = null; render(); window.scrollTo(0, 0); });
 }
 
 function render() {
+  if (mapObj) { mapObj.remove(); mapObj = null; }
   renderTabs();
   const app = $('#app');
   if (tab === 'viagem') app.innerHTML = S.active ? viewLive() : viewStart();
   if (tab === 'relatorio') app.innerHTML = viewReport();
   if (tab === 'cargas') app.innerHTML = viewCharges();
+  if (tab === 'mapa') app.innerHTML = viewMap();
   if (tab === 'ajustes') app.innerHTML = viewSettings();
   bind();
 }
@@ -334,7 +567,9 @@ function viewStart() {
     <span class="small muted">Quantos tracinhos o painel mostra agora?</span>
     ${batteryHTML(last?.dashEnd ?? S.settings.tracos, { picker: true, name: 'ini' })}
     <button class="primary block" id="go">Iniciar viagem</button>
-    <p class="note">Deixe o celular no suporte com a tela ligada. Com a tela apagada o iPhone para de mandar o GPS para o app.</p>
+    <p class="note">${NATIVE
+      ? 'Pode bloquear a tela e guardar o celular: o GPS continua medindo. Na primeira vez, permita o acesso à localização.'
+      : 'No site, o iPhone pausa o GPS com a tela bloqueada e o trecho é estimado em linha reta. Para medir certinho com a tela bloqueada, use o app Moto KM instalado pelo Xcode/TestFlight.'}</p>
   </section>
   ${st.autonomia ? `<section class="panel"><div class="grid2">
       <div class="stat"><span class="label">Autonomia estimada</span><span class="num">${fmt(st.autonomia, 0)}<span class="unit">km</span></span></div>
@@ -356,6 +591,7 @@ function viewLive() {
     </div>
     <div class="row between small"><span class="muted">Saiu com</span>${batteryHTML(S.active.dashStart, { mini: true })}</div>
   </section>
+  <button class="warn block" id="report">⚠ Avisar perigo aqui</button>
   <button class="primary block" id="end">Terminar viagem</button>
   <button class="ghost block" id="cancel">Descartar</button>`;
 }
@@ -447,7 +683,7 @@ function viewReport() {
   <section class="panel">
     <div class="row between"><h2>Viagens</h2><button class="ghost" id="manual" style="min-height:40px;padding:8px 14px;font-size:14px">+ Manual</button></div>
     ${trips.length ? `<div class="trips">${trips.map(t => `
-      <div class="trip">
+      <div class="trip"${t.route?.length > 1 ? ` data-trip="${t.id}" role="button" tabindex="0" aria-label="Ver viagem no mapa"` : ''}>
         ${routeSVG(t.route)}
         <div style="min-width:0">
           <div class="row" style="gap:8px"><span class="num km">${fmt(t.km, 2)}</span><span class="small muted">km</span></div>
@@ -457,6 +693,29 @@ function viewReport() {
         <button class="x" data-del="${t.id}" aria-label="Apagar viagem">×</button>
       </div>`).join('')}</div>`
     : `<div class="empty"><strong>Nenhuma viagem ainda</strong><span class="small muted">Vá na aba Viagem e toque em Iniciar viagem antes de sair.</span></div>`}
+  </section>`;
+}
+
+function viewMap() {
+  const here = S.active?.last;
+  const list = hzActive().map(h => ({ h, d: here ? dist(here, [h.lat, h.lon]) : null }))
+    .sort((a, b) => a.d != null ? a.d - b.d : b.h.date - a.h.date);
+  return `
+  <header class="row between"><h1>Mapa</h1>${mapFocus ? '<button class="ghost" id="allTrips" style="min-height:40px;padding:8px 14px;font-size:14px">Ver todas</button>' : ''}</header>
+  <section class="panel map-panel"><div id="map" role="region" aria-label="Mapa com viagens e perigos"></div></section>
+  <button class="warn block" id="report">⚠ Avisar perigo aqui</button>
+  <div class="legend">${Object.values(HZ).map(t => `<span>${t.ic} ${t.name}</span>`).join('')}</div>
+  <section class="panel">
+    <h2>Perigos marcados</h2>
+    ${list.length ? `<div>${list.map(({ h, d }) => { const t = HZ[h.type] || HZ.outro; return `
+      <div class="hz-item"><span class="ic">${t.ic}</span><div>
+        <strong>${t.name}</strong>${d != null ? ` <span class="small muted">· ${metros(d)}</span>` : ''}
+        <div class="small muted">Marcado ${ago(h.date)}${h.confirms ? ` · confirmado ${h.confirms}x` : ''}</div>
+        ${h.note ? `<div class="small">${esc(h.note)}</div>` : ''}
+        <div class="acts"><button type="button" data-hz-ok="${h.id}">Ainda está lá</button><button type="button" class="ghost" data-hz-gone="${h.id}">Não está mais</button></div>
+      </div></div>`; }).join('')}</div>`
+    : '<div class="empty"><strong>Nenhum perigo marcado</strong><span class="small muted">Viu um fio caído ou um buraco? Toque em Avisar perigo, ou segure o dedo no mapa no lugar exato.</span></div>'}
+    <p class="note">Durante a viagem, o app avisa com voz e mensagem quando você chega a ${ALERT_M} m de um perigo marcado.</p>
   </section>`;
 }
 
@@ -558,6 +817,13 @@ function bind() {
       (el, close) => { let v = S.active.dashStart; bindPickers(el, (_, x) => v = x);
         el.querySelector('[data-x]').onclick = close; el.querySelector('[data-ok]').onclick = () => { close(); finishTrip(v); }; });
   });
+  $('#report') && ($('#report').onclick = () => reportSheet(null));
+  $('#allTrips') && ($('#allTrips').onclick = () => { mapFocus = null; render(); });
+  app.querySelectorAll('[data-trip]').forEach(r => r.onclick = e => {
+    if (e.target.closest('button')) return;
+    mapFocus = +r.dataset.trip; tab = 'mapa'; render(); window.scrollTo(0, 0);
+  });
+  if (tab === 'mapa') initMap();
   $('#cancel') && ($('#cancel').onclick = () => askConfirm('Descartar viagem?', 'Os quilômetros desta viagem não serão salvos.', 'Descartar', cancelTrip));
   if (S.active && tab === 'viagem') renderLive();
 
@@ -624,7 +890,7 @@ function bind() {
 /* ---------- Início ---------- */
 render();
 if (S.active) { beginWatch(); toast('Viagem em andamento retomada'); }
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (!NATIVE && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 try { navigator.storage?.persist?.(); } catch (e) {}
 </script>
 </body>
