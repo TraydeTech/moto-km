@@ -256,9 +256,18 @@ let watchId = null, watchToken = 0, wake = null, ticker = null, lastSave = 0;
 
 function startTrip(dash) {
   S.active = { start: Date.now(), dashStart: dash, m: 0, movingMs: 0, maxKmh: 0, last: null, lastT: null, route: [], speed: 0, acc: null, gps: 'aguardando' };
-  save(); beginWatch(); render();
+  save(); tab = 'viagem'; render(); window.scrollTo(0, 0);
+  // Mostra a tela da viagem já; liga o GPS no quadro seguinte, para o iPhone não segurar a tela enquanto o GPS nativo acorda.
+  setTimeout(beginWatch, 30);
 }
 function beginWatch() {
+  if (!S.active) return;
+  try { startGps(); } catch (e) { toast('Não consegui ligar o GPS'); }
+  requestWake();
+  clearInterval(ticker); ticker = setInterval(renderLive, 1000);
+  renderLive();
+}
+function startGps() {
   clearGps();
   if (BG) {
     const token = ++watchToken;
@@ -273,9 +282,7 @@ function beginWatch() {
       .catch(() => { toast('Não consegui ligar o GPS'); });
   } else if ('geolocation' in navigator) {
     watchId = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
-  } else { toast('Este navegador não tem acesso ao GPS'); return; }
-  requestWake();
-  clearInterval(ticker); ticker = setInterval(renderLive, 1000);
+  } else toast('Este navegador não tem acesso ao GPS');
 }
 function clearGps() {
   watchToken++;
@@ -889,7 +896,7 @@ function bind() {
 
 /* ---------- Início ---------- */
 render();
-if (S.active) { beginWatch(); toast('Viagem em andamento retomada'); }
+if (S.active) { setTimeout(beginWatch, 30); toast('Viagem em andamento retomada'); }
 if (!NATIVE && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 try { navigator.storage?.persist?.(); } catch (e) {}
 </script>
