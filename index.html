@@ -150,24 +150,46 @@ button.warn{background:var(--low);color:#fff}
 'use strict';
 /* ---------- Dados ---------- */
 const KEY = 'motokm:v1';
+// A viagem em andamento também fica numa chave própria, pequena, gravada a cada ponto do GPS.
+// Se o iPhone fechar o app sem aviso, ela volta com os pontos já gravados.
+const KEY_ATIVA = KEY + ':ativa';
 const DEF = {
   settings: { preco: 0.90, ah: 20, volts: 60, efic: 0.85, odo: 0, tracos: 5, kwCarregador: 0.2, autonomiaFab: 40 },
   trips: [], charges: [], hazards: [], active: null
 };
 let S = load();
+saveActive(); // deixa a cópia da viagem em andamento igual ao que foi carregado (apaga cópia velha)
 let tab = 'viagem';
 let chartMode = 'dias';
 
 function load() {
+  let st = JSON.parse(JSON.stringify(DEF));
   try {
     const r = JSON.parse(localStorage.getItem(KEY));
-    if (r) return { ...JSON.parse(JSON.stringify(DEF)), ...r, settings: { ...DEF.settings, ...(r.settings || {}) } };
+    if (r) st = { ...st, ...r, settings: { ...DEF.settings, ...(r.settings || {}) } };
   } catch (e) {}
-  return JSON.parse(JSON.stringify(DEF));
+  st.active = recoverActive(st);
+  return st;
+}
+// Só aproveita a cópia da viagem em andamento se o histórico disser que essa mesma viagem
+// (mesmo início) ainda não terminou. Assim uma viagem já salva nunca volta.
+function recoverActive(st) {
+  let a = null;
+  try { a = JSON.parse(localStorage.getItem(KEY_ATIVA)); } catch (e) {}
+  const cur = st.active;
+  if (!cur || !a || a.start !== cur.start || st.trips.some(t => t.start === cur.start)) return cur;
+  return (a.m || 0) >= (cur.m || 0) ? a : cur;
+}
+function saveActive() {
+  try {
+    if (S.active) localStorage.setItem(KEY_ATIVA, JSON.stringify(S.active));
+    else localStorage.removeItem(KEY_ATIVA);
+  } catch (e) {}
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(S)); }
   catch (e) { toast('Não consegui salvar no aparelho. Faça um backup.'); }
+  saveActive(); // depois do histórico: se o app cair entre os dois, a viagem não é finalizada duas vezes
 }
 
 /* ---------- Utilidades ---------- */
@@ -352,7 +374,10 @@ function pushRoute(A, pt) {
   if (!r.length || dist(r[r.length - 1], p) >= 15) r.push(p);
   if (r.length > 1500) A.route = r.filter((_, i) => i % 2 === 0 || i === r.length - 1);
 }
-function persist() { const n = Date.now(); if (n - lastSave > 5000) { lastSave = n; save(); } }
+function persist() {
+  saveActive();                                   // a cada ponto: só a viagem em andamento, rápido
+  const n = Date.now(); if (n - lastSave > 5000) { lastSave = n; save(); }
+}
 
 function finishTrip(dashEnd) {
   const A = S.active; if (!A) return;
@@ -360,7 +385,8 @@ function finishTrip(dashEnd) {
   const trip = { id: Date.now(), start: A.start, end: Date.now(), km: A.m / 1000, movingSec: A.movingMs / 1000,
     maxKmh: A.maxKmh, dashStart: A.dashStart, dashEnd, route: A.route, estKm: (A.estM || 0) / 1000 };
   S.active = null;
-  if (trip.km >= 0.05) { S.trips.push(trip); toast(`Viagem salva: ${fmt(trip.km, 2)} km`); }
+  if (S.trips.some(t => t.start === trip.start)) toast('Esta viagem já estava salva');
+  else if (trip.km >= 0.05) { S.trips.push(trip); toast(`Viagem salva: ${fmt(trip.km, 2)} km`); }
   else toast('Viagem muito curta, não foi salva');
   save(); render();
 }
@@ -832,6 +858,7 @@ function bind() {
 
   $('#go') && ($('#go').onclick = () => startTrip(pick.ini));
   $('#end') && ($('#end').onclick = () => {
+    if ($('#layer .sheet-bg')) return;             // já tem uma janela aberta
     sheet(`<h2>Fim da viagem</h2><span class="muted">Quantos tracinhos sobraram?</span>${batteryHTML(S.active.dashStart, { picker: true, name: 'fim' })}
       <button class="primary block" data-ok>Salvar viagem</button><button class="ghost block" data-x>Continuar rodando</button>`,
       (el, close) => { let v = S.active.dashStart; bindPickers(el, (_, x) => v = x);
@@ -909,7 +936,12 @@ function bind() {
 
 /* ---------- Início ---------- */
 render();
-if (S.active) { setTimeout(beginWatch, 30); toast('Viagem em andamento retomada'); }
+if (S.active) {
+  S.active.speed = 0; S.active.gps = 'aguardando';  // velocidade e sinal antigos não valem mais
+  save(); render();
+  setTimeout(beginWatch, 30);
+  toast(`Viagem em andamento retomada: ${fmt(S.active.m / 1000, 2)} km`);
+}
 if (!NATIVE && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 try { navigator.storage?.persist?.(); } catch (e) {}
 </script>
