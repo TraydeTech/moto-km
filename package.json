@@ -4,14 +4,21 @@
   "private": true,
   "description": "Moto KM: km, bateria e consumo de moto elétrica. Web (PWA) + app iOS nativo com GPS em segundo plano.",
   "scripts": {
-    "build:www": "node scripts/build-www.mjs",
+    "build:www": "node scripts/version.mjs check && node scripts/build-www.mjs",
     "ios:sync": "npm run build:www && npx cap sync ios",
-    "ios:open": "npx cap open ios"
+    "ios:open": "npx cap open ios",
+    "ios:build-number": "node scripts/version.mjs bump-build",
+    "version:sync": "node scripts/version.mjs sync",
+    "version:check": "node scripts/version.mjs check",
+    "release:check": "node scripts/version.mjs check --release",
+    "version": "node scripts/version.mjs sync && git add index.html ios/App/App.xcodeproj/project.pbxproj"
   },
   "dependencies": {
     "@capacitor-community/background-geolocation": "1.3.1",
+    "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.6.2",
-    "@capacitor/ios": "8.6.2"
+    "@capacitor/ios": "8.6.2",
+    "@capacitor/status-bar": "8.0.4"
   },
   "devDependencies": {
     "@capacitor/cli": "8.6.2"
