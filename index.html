@@ -15,17 +15,22 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap">
 <style>
-/* Layout: painel de instrumentos — números grandes em cima, abas embaixo, uma coluna */
+/* Painel de moto elétrica: grafite de base, verde-lima para a ação principal e a carga,
+   âmbar para perigos. Números grandes em cima, abas embaixo, uma coluna. */
 :root{
-  --bg:#EEF0F2; --panel:#FFFFFF; --fg:#15181C; --muted:#5F6670; --line:#D5D9DE;
-  --accent:#B45309; --accent-ink:#FFFFFF; --ok:#1F9D55; --low:#C2362B; --seg-off:#D9DDE2;
+  --bg:#E9ECEF; --panel:#FFFFFF; --fg:#14171A; --muted:#58616B; --line:#D3D8DD;
+  --accent:#9BDB2C; --accent-ink:#0F1405; --accent-txt:#3F6212;   /* lima: botão principal; texto lima legível no claro */
+  --ok:#65A30D; --low:#C2362B; --haz:#D97706; --haz-ink:#1A1003; --seg-off:#D7DCE1;
+  --route:#3F6212; --hero:#1B1F24; --hero-fg:#F2F5F7; --hero-muted:#9AA4AE; --hero-line:#2C333B;
   --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
   --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root{
-  --bg:#0E1114; --panel:#171B20; --fg:#E8EBEE; --muted:#8B939C; --line:#262C33;
-  --accent:#F59E0B; --accent-ink:#1A1205; --ok:#34D27B; --low:#F0645A; --seg-off:#2A3038;
+  --bg:#101215; --panel:#1A1E23; --fg:#EDF0F2; --muted:#8F99A3; --line:#2A3038;
+  --accent:#B6F04A; --accent-ink:#0F1405; --accent-txt:#B6F04A;
+  --ok:#A3E635; --low:#FF6B5E; --haz:#F5A524; --haz-ink:#1A1003; --seg-off:#2B3139;
+  --route:#B6F04A; --hero:#1A1E23; --hero-fg:#EDF0F2; --hero-muted:#8F99A3; --hero-line:#2A3038;
   color-scheme:dark;
 }}
 *{box-sizing:border-box}
@@ -91,7 +96,7 @@ input,select{font:500 16px var(--body);color:var(--fg);background:var(--bg);bord
 .trip{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;padding-block:12px;border-top:1px solid var(--line)}
 .trip:first-child{border-top:0}
 .trip svg{width:52px;height:40px}
-.trip svg path{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.trip svg path{fill:none;stroke:var(--route);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .trip .km{font-size:24px}
 .trip .x{background:transparent;color:var(--muted);min-height:36px;padding:6px 10px;font-size:20px}
 
@@ -101,7 +106,7 @@ nav{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1p
 nav .tabs{display:flex;width:100%;max-width:560px}
 nav button{flex:1;flex-direction:column;gap:2px;background:transparent;border-radius:0;font-size:12px;font-weight:600;color:var(--muted);padding:10px 4px;min-height:60px}
 nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-nav button[aria-current="page"]{color:var(--accent)}
+nav button[aria-current="page"]{color:var(--accent-txt)}
 
 /* Janela de baixo */
 .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
@@ -111,6 +116,32 @@ nav button[aria-current="page"]{color:var(--accent)}
   padding:10px 16px;border-radius:10px;font-weight:600;z-index:30;max-width:90vw;text-align:center}
 .empty{text-align:center;padding:24px 8px;display:flex;flex-direction:column;gap:8px;align-items:center}
 .note{font-size:13px;color:var(--muted);border-left:3px solid var(--accent);padding-left:10px}
+
+/* Painel escuro de destaque (início, viagem e resumo): grafite nos dois temas */
+.hero{background:var(--hero);color:var(--hero-fg);border-color:var(--hero-line)}
+.hero .label,.hero .muted,.hero .unit{color:var(--hero-muted)}
+.hero .seg:not(.on){background:#2B3139}
+.hero .battery:not(.low) .seg.on{background:#A3E635}
+.big{font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums;line-height:.85;letter-spacing:-.01em}
+.big .unit{font-size:.28em;font-weight:600;letter-spacing:.02em;margin-left:6px}
+button.go{min-height:64px;font:700 26px var(--display);letter-spacing:.04em;text-transform:uppercase;border-radius:14px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:6px 10px;border-radius:999px;background:var(--seg-off);color:var(--fg)}
+.hero .pill{background:#2B3139;color:var(--hero-fg)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--hero-line);padding-top:12px}
+.kpis .num{font-size:30px;line-height:1}
+.ride{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:center}
+.ride svg{width:64px;height:50px}
+.ride .unit{margin-left:4px}
+.ride svg path,.route-big path{fill:none;stroke:var(--route);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.hero .route-big path{stroke:#B6F04A;stroke-width:4}
+.route-big{display:block;width:100%;height:auto;max-height:240px;aspect-ratio:52/40;background:#14171B;border-radius:12px;padding:12px}
+.batt-flow{display:flex;align-items:center;gap:10px}
+.batt-flow .battery.mini{width:76px}
+.linkbtn{background:transparent;color:var(--muted);min-height:44px;font-weight:500;text-decoration:underline;text-underline-offset:3px}
+.done-badge{display:inline-flex;align-items:center;gap:8px;color:var(--accent-txt);font:700 15px var(--body);text-transform:uppercase;letter-spacing:.08em}
+.hero .done-badge{color:#B6F04A}
+@media (prefers-reduced-motion:no-preference){.appear{animation:appear .25s ease-out}
+  @keyframes appear{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}}
 /* Mapa e perigos */
 .map-panel{padding:0;overflow:hidden;isolation:isolate;position:relative;z-index:0}
 #map{height:56vh;min-height:320px;background:var(--seg-off)}
@@ -122,7 +153,7 @@ nav button[aria-current="page"]{color:var(--accent)}
 .hz-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .hz-grid button{flex-direction:column;gap:4px;min-height:84px;padding:10px 6px;font-size:13px;background:var(--bg);border:1px solid var(--line)}
 .hz-grid button .ic{font-size:28px;line-height:1}
-button.warn{background:var(--low);color:#fff}
+button.warn{background:var(--haz);color:var(--haz-ink)}
 .hz-item{display:grid;grid-template-columns:36px 1fr;gap:10px;align-items:start;padding-block:12px;border-top:1px solid var(--line)}
 .hz-item:first-child{border-top:0}
 .hz-item .ic{font-size:26px;line-height:1.2;text-align:center}
@@ -137,7 +168,9 @@ button.warn{background:var(--low);color:#fff}
 .map-info span{background:rgba(255,255,255,.9);color:#333;font-size:11px;padding:4px 8px;border-radius:8px}
 .map-info a{color:#1d4ed8}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted)}
-@media (max-width:360px){.gauge .speed{font-size:88px}.grid3{grid-template-columns:1fr 1fr}}
+@media (max-height:700px){.big{font-size:72px!important}.hero{gap:8px!important;padding:14px}.kpis{padding-top:8px}
+  .kpis .num{font-size:26px}button.go{min-height:56px;font-size:23px}main{gap:12px;padding-top:10px}h1{font-size:25px}}
+@media (max-width:360px){.gauge .speed{font-size:88px}.grid3{grid-template-columns:1fr 1fr}.big{font-size:84px!important}.kpis .num{font-size:26px}}
 @media (prefers-reduced-motion:no-preference){button{transition:transform .08s}button:active{transform:scale(.97)}}
 </style>
 </head>
@@ -158,6 +191,7 @@ const DEF = {
   trips: [], charges: [], hazards: [], active: null
 };
 let S = load();
+let summaryId = null; // viagem recém-salva: mostra o resumo na aba Viagem até fechar
 saveActive(); // deixa a cópia da viagem em andamento igual ao que foi carregado (apaga cópia velha)
 let tab = 'viagem';
 let chartMode = 'dias';
@@ -349,13 +383,13 @@ function pauseTrip() {
   const A = S.active; if (!A || A.pausedAt) return;
   A.pausedAt = Date.now(); A.speed = 0;
   clearGps(); try { wake?.release(); } catch (e) {} wake = null;
-  save(); render(); toast('Viagem pausada');
+  save(); render(); toast('Rolê pausado');
 }
 function resumeTrip() {
   const A = S.active; if (!A || !A.pausedAt) return;
   A.pausedMs = (A.pausedMs || 0) + Math.max(0, Date.now() - A.pausedAt);
   A.pausedAt = null; A.last = null; A.lastT = null; A.gps = 'aguardando';
-  save(); render(); setTimeout(beginWatch, 30); toast('Viagem retomada');
+  save(); render(); setTimeout(beginWatch, 30); toast('Bora de novo');
 }
 const pausedMs = (A, now = Date.now()) => (A.pausedMs || 0) + (A.pausedAt ? Math.max(0, now - A.pausedAt) : 0);
 
@@ -405,7 +439,7 @@ function finishTrip(dashEnd) {
   const pms = pausedMs(A, trip.end); if (pms) trip.pausedSec = pms / 1000;
   S.active = null;
   if (S.trips.some(t => t.start === trip.start)) toast('Esta viagem já estava salva');
-  else if (trip.km >= 0.05) { S.trips.push(trip); toast(`Viagem salva: ${fmt(trip.km, 2)} km`); }
+  else if (trip.km >= 0.05) { S.trips.push(trip); summaryId = trip.id; toast('Rolê salvo'); }
   else toast('Viagem muito curta, não foi salva');
   save(); render();
 }
@@ -604,7 +638,8 @@ function render() {
   if (mapObj) { mapObj.remove(); mapObj = null; }
   renderTabs();
   const app = $('#app');
-  if (tab === 'viagem') app.innerHTML = S.active ? viewLive() : viewStart();
+  const sum = !S.active && summaryId && S.trips.find(t => t.id === summaryId);
+  if (tab === 'viagem') app.innerHTML = S.active ? viewLive() : sum ? viewSummary(sum) : viewStart();
   if (tab === 'relatorio') app.innerHTML = viewReport();
   if (tab === 'cargas') app.innerHTML = viewCharges();
   if (tab === 'mapa') app.innerHTML = viewMap();
@@ -612,24 +647,34 @@ function render() {
   bind();
 }
 
+// Tempo da viagem sem as pausas.
+const tripSec = t => Math.max(0, (t.end - t.start) / 1000 - (t.pausedSec || 0));
+function lastRideHTML(t) {
+  return `<div class="ride">${routeSVG(t.route)}<div>
+    <div class="row between"><span class="num" style="font-size:24px">${fmt(t.km, 2)}<span class="unit">km</span></span>
+      <span class="small muted">${dia(t.start)} · ${hora(t.start)}</span></div>
+    <div class="row between small"><span class="muted">${durMin(tripSec(t))}</span>
+      <span class="batt-flow">${batteryHTML(t.dashStart, { mini: true })}<span class="muted" aria-label="para">→</span>${batteryHTML(t.dashEnd, { mini: true })}</span></div>
+  </div></div>`;
+}
 function viewStart() {
   const st = stats(S.trips), today = stats(inPeriod(S.trips, startOfDay(Date.now())));
   const last = S.trips[S.trips.length - 1];
   return `
   <header class="row between"><h1>Moto KM</h1><span class="small muted">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</span></header>
-  <section class="panel">
-    <div class="grid2">
-      <div class="stat"><span class="label">Hodômetro</span><span class="num">${fmt(S.settings.odo + st.km, 1)}<span class="unit">km</span></span></div>
-      <div class="stat"><span class="label">Hoje</span><span class="num">${fmt(today.km, 1)}<span class="unit">km</span></span></div>
-    </div>
-    ${last ? `<div class="row between small"><span class="muted">Bateria na última viagem</span>${batteryHTML(last.dashEnd, { mini: true })}</div>` : ''}
-  </section>
-  <section class="panel">
-    <h2>Nova viagem</h2>
-    <span class="small muted">Quantos tracinhos o painel mostra agora?</span>
+  <section class="panel hero">
+    <span class="label">Bateria inicial</span>
+    <span class="small muted" style="margin-top:-8px">Marque os tracinhos que o painel mostra agora</span>
     ${batteryHTML(last?.dashEnd ?? S.settings.tracos, { picker: true, name: 'ini' })}
-    <button class="primary block" id="go">Iniciar viagem</button>
-    <p class="note">${NATIVE
+    <button class="primary block go" id="go">Bora rodar</button>
+    <div class="grid2">
+      <div class="stat"><span class="label">Hoje</span><span class="num">${fmt(today.km, 1)}<span class="unit">km</span></span></div>
+      <div class="stat"><span class="label">Hodômetro</span><span class="num">${fmt(S.settings.odo + st.km, 1)}<span class="unit">km</span></span></div>
+    </div>
+  </section>
+  ${last ? `<section class="panel"><span class="label">Último rolê</span>${lastRideHTML(last)}</section>` : ''}
+  <section class="panel" style="gap:8px">
+    <p class="note" style="margin:0">${NATIVE
       ? 'Pode bloquear a tela e guardar o celular: o GPS continua medindo. Na primeira vez, permita o acesso à localização.'
       : 'No site, o iPhone pausa o GPS com a tela bloqueada e o trecho é estimado em linha reta. Para medir certinho com a tela bloqueada, use o app Moto KM instalado pelo Xcode/TestFlight.'}</p>
   </section>
@@ -639,26 +684,52 @@ function viewStart() {
     </div>${st.autonomia ? '' : `<p class="note">Valor de fábrica (Ajustes). Quando as viagens gastarem 2 tracinhos ou mais, o app passa a usar a autonomia medida.</p>`}</section>` : ''}`;
 }
 
-function viewLive() {
+function viewSummary(t) {
+  const used = t.dashStart != null && t.dashEnd != null ? t.dashStart - t.dashEnd : null;
+  const wh = used > 0 ? used / S.settings.tracos * S.settings.volts * S.settings.ah : null;
+  const media = t.movingSec > 0 ? t.km / (t.movingSec / 3600) : null; // média em movimento, como no Strava
   return `
-  <header class="row between"><h1>${S.active.pausedAt ? 'Viagem pausada' : 'Em viagem'}</h1><span class="gps" id="gps"><span class="dot"></span>GPS</span></header>
-  <section class="panel gauge">
-    <div class="num speed" id="spd">0</div><div class="speed-unit">km/h</div>
+  <header class="row between"><span class="done-badge">✓ Rolê salvo</span><span class="small muted">${dia(t.start)} · ${hora(t.start)} → ${hora(t.end)}</span></header>
+  <section class="panel hero appear" style="gap:14px">
+    ${t.route?.length > 1 ? routeSVG(t.route).replace('<svg ', '<svg class="route-big" ') : ''}
+    <div class="big" style="font-size:88px">${fmt(t.km, 2)}<span class="unit">km</span></div>
+    <div class="kpis">
+      <div class="stat"><span class="label">Duração</span><span class="num">${durMin(tripSec(t))}</span><span class="small muted">${t.pausedSec ? `+ ${durMin(t.pausedSec)} pausado` : 'sem pausa'}</span></div>
+      <div class="stat"><span class="label">Média</span><span class="num">${media ? Math.round(media) : '–'}</span><span class="small muted">km/h</span></div>
+      <div class="stat"><span class="label">Máxima</span><span class="num">${Math.round(t.maxKmh || 0)}</span><span class="small muted">km/h</span></div>
+    </div>
   </section>
-  <section class="panel">
-    <div class="grid3">
-      <div class="stat"><span class="label">Distância</span><span class="num" id="lkm">0,00</span><span class="small muted">km</span></div>
-      <div class="stat"><span class="label">Tempo</span><span class="num" id="ltime">0:00</span><span class="small muted">em movimento</span></div>
+  <section class="panel" style="gap:10px">
+    <div class="row between"><span class="label">Bateria</span>
+      <span class="batt-flow">${batteryHTML(t.dashStart, { mini: true })}<span class="muted" aria-label="para">→</span>${batteryHTML(t.dashEnd, { mini: true })}</span></div>
+    <div class="row between small"><span class="muted">Consumo estimado</span>
+      <strong>${wh ? `${used} ${used > 1 ? 'tracinhos' : 'tracinho'} · ~${fmt(wh / 1000, 2)} kWh` : 'dados insuficientes'}</strong></div>
+    ${wh ? '' : '<p class="note" style="margin:0">Os tracinhos não baixaram nesta viagem. O consumo aparece quando a bateria cair pelo menos um tracinho.</p>'}
+    ${t.estKm >= 0.05 ? `<p class="note" style="margin:0">${fmt(t.estKm, 2)} km foram estimados em linha reta porque o GPS ficou parado.</p>` : ''}
+  </section>
+  <button class="primary block go" id="closeSummary">Fechar</button>`;
+}
+function viewLive() {
+  const P = !!S.active.pausedAt;
+  return `
+  <header class="row between"><h1>${P ? 'Rolê pausado' : 'Rodando'}</h1><span class="pill gps" id="gps"><span class="dot"></span>GPS</span></header>
+  <section class="panel hero" style="gap:14px">
+    <span class="label">Distância</span>
+    <div class="big" style="font-size:104px"><span id="lkm">0,00</span><span class="unit">km</span></div>
+    <div class="kpis">
+      <div class="stat"><span class="label">Tempo</span><span class="num" id="ltime">0:00</span><span class="small muted">rodando</span></div>
+      <div class="stat"><span class="label">Agora</span><span class="num" id="spd">0</span><span class="small muted">km/h</span></div>
       <div class="stat"><span class="label">Máxima</span><span class="num" id="lmax">0</span><span class="small muted">km/h</span></div>
     </div>
+  </section>
+  <section class="panel" style="gap:10px">
     <div class="row between small"><span class="muted">Saiu com</span>${batteryHTML(S.active.dashStart, { mini: true })}</div>
     <div class="row between small" id="restWrap"><span class="muted">Ainda dá para rodar${autonomia().real ? '' : ' · fábrica'}</span><strong id="lrest">–</strong></div>
   </section>
-  ${S.active.pausedAt
-    ? '<button class="primary block" id="resume">▶ Retomar viagem</button>'
-    : '<button class="warn block" id="report">⚠ Avisar perigo aqui</button><button class="ghost block" id="pause">Ⅱ Pausar</button>'}
-  <button class="${S.active.pausedAt ? 'ghost' : 'primary'} block" id="end">Terminar viagem</button>
-  <button class="ghost block" id="cancel">Descartar</button>`;
+  ${P
+    ? '<button class="primary block go" id="resume">▶ Retomar</button><button class="ghost block" id="end">Encerrar rolê</button>'
+    : '<button class="primary block go" id="end">Encerrar rolê</button><div class="grid2"><button class="ghost" id="pause">Ⅱ Pausar</button><button class="warn" id="report">⚠ Perigo</button></div>'}
+  <button class="linkbtn block" id="cancel">Descartar sem salvar</button>`;
 }
 function renderLive() {
   const A = S.active; if (!A || tab !== 'viagem' || !$('#spd')) return;
@@ -887,6 +958,7 @@ function bind() {
   });
   $('#report') && ($('#report').onclick = () => reportSheet(null));
   $('#pause') && ($('#pause').onclick = pauseTrip);
+  $('#closeSummary') && ($('#closeSummary').onclick = () => { summaryId = null; render(); window.scrollTo(0, 0); });
   $('#resume') && ($('#resume').onclick = resumeTrip);
   $('#allTrips') && ($('#allTrips').onclick = () => { mapFocus = null; render(); });
   app.querySelectorAll('[data-trip]').forEach(r => r.onclick = e => {
