@@ -151,7 +151,7 @@ button.warn{background:var(--low);color:#fff}
 /* ---------- Dados ---------- */
 const KEY = 'motokm:v1';
 const DEF = {
-  settings: { preco: 0.90, ah: 20, volts: 60, efic: 0.85, odo: 0, tracos: 5, kwCarregador: 0.2 },
+  settings: { preco: 0.90, ah: 20, volts: 60, efic: 0.85, odo: 0, tracos: 5, kwCarregador: 0.2, autonomiaFab: 40 },
   trips: [], charges: [], hazards: [], active: null
 };
 let S = load();
@@ -237,6 +237,16 @@ function stats(trips) {
   const whKm = ok ? (dash / s.tracos * whBat) / kmDash : null;
   const custoKm = whKm ? whKm / 1000 / s.efic * s.preco : null;
   return { km, sec, n: trips.length, dash, kmPorTraco, whKm, custoKm, autonomia: kmPorTraco ? kmPorTraco * s.tracos : null };
+}
+// Autonomia de uma carga cheia: usa a medida nas viagens; sem dados, usa a de fábrica (Ajustes).
+function autonomia() {
+  const st = stats(S.trips);
+  return st.autonomia ? { km: st.autonomia, real: true } : { km: S.settings.autonomiaFab || 0, real: false };
+}
+// Quanto ainda dá para rodar, partindo dos tracinhos da saída e descontando o que já rodou.
+function kmRestante(A) {
+  const a = autonomia(); if (!a.km || A.dashStart == null) return null;
+  return Math.max(0, A.dashStart / S.settings.tracos * a.km - A.m / 1000);
 }
 function chargeKwh(c) {
   const s = S.settings;
@@ -578,10 +588,10 @@ function viewStart() {
       ? 'Pode bloquear a tela e guardar o celular: o GPS continua medindo. Na primeira vez, permita o acesso à localização.'
       : 'No site, o iPhone pausa o GPS com a tela bloqueada e o trecho é estimado em linha reta. Para medir certinho com a tela bloqueada, use o app Moto KM instalado pelo Xcode/TestFlight.'}</p>
   </section>
-  ${st.autonomia ? `<section class="panel"><div class="grid2">
-      <div class="stat"><span class="label">Autonomia estimada</span><span class="num">${fmt(st.autonomia, 0)}<span class="unit">km</span></span></div>
-      <div class="stat"><span class="label">Cada tracinho</span><span class="num">${fmt(st.kmPorTraco, 1)}<span class="unit">km</span></span></div>
-    </div></section>` : ''}`;
+  ${autonomia().km ? `<section class="panel"><div class="grid2">
+      <div class="stat"><span class="label">Autonomia ${st.autonomia ? 'medida' : 'de fábrica'}</span><span class="num">${fmt(autonomia().km, 0)}<span class="unit">km</span></span></div>
+      <div class="stat"><span class="label">Cada tracinho</span><span class="num">${fmt(autonomia().km / S.settings.tracos, 1)}<span class="unit">km</span></span></div>
+    </div>${st.autonomia ? '' : `<p class="note">Valor de fábrica (Ajustes). Quando as viagens gastarem 2 tracinhos ou mais, o app passa a usar a autonomia medida.</p>`}</section>` : ''}`;
 }
 
 function viewLive() {
@@ -597,6 +607,7 @@ function viewLive() {
       <div class="stat"><span class="label">Máxima</span><span class="num" id="lmax">0</span><span class="small muted">km/h</span></div>
     </div>
     <div class="row between small"><span class="muted">Saiu com</span>${batteryHTML(S.active.dashStart, { mini: true })}</div>
+    <div class="row between small" id="restWrap"><span class="muted">Ainda dá para rodar${autonomia().real ? '' : ' · fábrica'}</span><strong id="lrest">–</strong></div>
   </section>
   <button class="warn block" id="report">⚠ Avisar perigo aqui</button>
   <button class="primary block" id="end">Terminar viagem</button>
@@ -608,6 +619,7 @@ function renderLive() {
   $('#lkm').textContent = fmt(A.m / 1000, 2);
   $('#ltime').textContent = dur(A.movingMs / 1000);
   $('#lmax').textContent = Math.round(A.maxKmh);
+  const r = kmRestante(A); if ($('#lrest')) $('#lrest').textContent = r == null ? '–' : `~${fmt(r, r < 10 ? 1 : 0)} km`;
   const g = $('#gps'), map = { ok: ['ok', `GPS ±${A.acc} m`], fraco: ['bad', `Sinal fraco ±${A.acc} m`], negado: ['bad', 'GPS bloqueado'], 'sem sinal': ['bad', 'Sem sinal'], aguardando: ['', 'Procurando GPS…'] };
   const [cls, txt] = map[A.gps] || map.aguardando;
   g.innerHTML = `<span class="dot ${cls}"></span>${txt}`;
@@ -773,6 +785,7 @@ function viewSettings() {
       ${f('ah', 'Capacidade (Ah)', s.ah, 1, 'Veja na etiqueta da bateria')}
       ${f('odo', 'Km antes do app', s.odo, 1)}
       ${f('tracos', 'Tracinhos cheia', s.tracos, 1)}
+      ${f('autonomiaFab', 'Autonomia de fábrica (km)', s.autonomiaFab, 1, 'Quantos km a moto faz com a carga cheia')}
     </div>
     <p class="note">Bateria de ${fmt(s.volts * s.ah / 1000, 2)} kWh. Se não achar os Ah, deixe 20 (o mais comum nessas motos de 60 V).</p>
   </section>
