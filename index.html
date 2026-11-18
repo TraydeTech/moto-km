@@ -10,6 +10,11 @@
 <meta name="apple-mobile-web-app-title" content="Moto KM">
 <meta name="theme-color" content="#0E1114">
 <link rel="manifest" href="manifest.webmanifest">
+<script>
+// Aparência escolhida em Ajustes, aplicada antes de desenhar a tela (sem piscar o tema errado).
+try { var t = (JSON.parse(localStorage.getItem('motokm:v1')) || {}).settings?.tema;
+  if (t === 'claro' || t === 'escuro') document.documentElement.dataset.theme = t === 'claro' ? 'light' : 'dark'; } catch (e) {}
+</script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,19 +25,27 @@
 :root{
   --bg:#E9ECEF; --panel:#FFFFFF; --fg:#14171A; --muted:#58616B; --line:#D3D8DD;
   --accent:#9BDB2C; --accent-ink:#0F1405; --accent-txt:#3F6212;   /* lima: botão principal; texto lima legível no claro */
-  --ok:#65A30D; --low:#C2362B; --haz:#D97706; --haz-ink:#1A1003; --seg-off:#D7DCE1;
+  --ok:#4D7C0F; --low:#C2362B; --haz:#D97706; --haz-ink:#1A1003; --seg-off:#D7DCE1;
   --route:#3F6212; --hero:#1B1F24; --hero-fg:#F2F5F7; --hero-muted:#9AA4AE; --hero-line:#2C333B;
   --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
   --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root{
+/* Escuro: no modo Sistema segue o aparelho; Claro/Escuro em Ajustes fixam o tema (data-theme). */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#101215; --panel:#1A1E23; --fg:#EDF0F2; --muted:#8F99A3; --line:#2A3038;
   --accent:#B6F04A; --accent-ink:#0F1405; --accent-txt:#B6F04A;
   --ok:#A3E635; --low:#FF6B5E; --haz:#F5A524; --haz-ink:#1A1003; --seg-off:#2B3139;
   --route:#B6F04A; --hero:#1A1E23; --hero-fg:#EDF0F2; --hero-muted:#8F99A3; --hero-line:#2A3038;
   color-scheme:dark;
 }}
+:root[data-theme="dark"]{
+  --bg:#101215; --panel:#1A1E23; --fg:#EDF0F2; --muted:#8F99A3; --line:#2A3038;
+  --accent:#B6F04A; --accent-ink:#0F1405; --accent-txt:#B6F04A;
+  --ok:#A3E635; --low:#FF6B5E; --haz:#F5A524; --haz-ink:#1A1003; --seg-off:#2B3139;
+  --route:#B6F04A; --hero:#1A1E23; --hero-fg:#EDF0F2; --hero-muted:#8F99A3; --hero-line:#2A3038;
+  color-scheme:dark;
+}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--body);-webkit-tap-highlight-color:transparent;
@@ -89,7 +102,7 @@ input,select{font:500 16px var(--body);color:var(--fg);background:var(--bg);bord
 .chart text.val{fill:var(--fg);font-weight:600}
 .seg-ctl{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px}
 .seg-ctl button{flex:1;min-height:36px;padding:6px 10px;font-size:14px;background:transparent;border-radius:8px}
-.seg-ctl button[aria-pressed="true"]{background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.seg-ctl button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);box-shadow:0 1px 2px rgba(0,0,0,.15)}
 
 /* Lista de viagens */
 .trips{display:flex;flex-direction:column}
@@ -182,12 +195,13 @@ button.warn{background:var(--haz);color:var(--haz-ink)}
 <script>
 'use strict';
 /* ---------- Dados ---------- */
+const APP_VERSION = '1.1.0'; // gravada por "npm run version:sync" a partir do package.json; não editar à mão
 const KEY = 'motokm:v1';
 // A viagem em andamento também fica numa chave própria, pequena, gravada a cada ponto do GPS.
 // Se o iPhone fechar o app sem aviso, ela volta com os pontos já gravados.
 const KEY_ATIVA = KEY + ':ativa';
 const DEF = {
-  settings: { preco: 0.90, ah: 20, volts: 60, efic: 0.85, odo: 0, tracos: 5, kwCarregador: 0.2, autonomiaFab: 40 },
+  settings: { preco: 0.90, ah: 20, volts: 60, efic: 0.85, odo: 0, tracos: 5, kwCarregador: 0.2, autonomiaFab: 40, tema: 'sistema' },
   trips: [], charges: [], hazards: [], active: null
 };
 let S = load();
@@ -224,6 +238,50 @@ function save() {
   try { localStorage.setItem(KEY, JSON.stringify(S)); }
   catch (e) { toast('Não consegui salvar no aparelho. Faça um backup.'); }
   saveActive(); // depois do histórico: se o app cair entre os dois, a viagem não é finalizada duas vezes
+}
+
+/* ---------- Aparência ---------- */
+const sysDark = matchMedia('(prefers-color-scheme: dark)');
+const isDark = () => S.settings.tema === 'escuro' || (S.settings.tema !== 'claro' && sysDark.matches);
+let themeApplied = null;
+function applyTheme() {
+  const t = S.settings.tema, root = document.documentElement;
+  if (t === 'claro') root.dataset.theme = 'light'; else if (t === 'escuro') root.dataset.theme = 'dark'; else delete root.dataset.theme;
+  const dark = isDark();
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#101215' : '#E9ECEF');
+  if (themeApplied === dark) return;
+  themeApplied = dark;
+  // iPhone: hora e bateria no topo em letra clara no tema escuro e escura no claro.
+  const SB = NATIVE ? (CAP.Plugins?.StatusBar || CAP.registerPlugin?.('StatusBar')) : null;
+  SB?.setStyle?.({ style: dark ? 'DARK' : 'LIGHT' }).catch?.(() => {});
+}
+// No modo Sistema, acompanha o aparelho trocando de claro para escuro com o app aberto.
+sysDark.addEventListener?.('change', () => {
+  if (S.settings.tema !== 'sistema') return;
+  applyTheme();
+  if (tab === 'mapa') render();                   // o mapa tem estilo claro e escuro próprios
+});
+
+/* ---------- Versão ---------- */
+let nativeInfo = null; // no iPhone: { version, build } do app instalado
+function versionText() {
+  const n = nativeInfo;
+  if (!n) return APP_VERSION;
+  return `${n.version} (${n.build})${n.version !== APP_VERSION ? ` · web ${APP_VERSION}` : ''}`;
+}
+function loadNativeInfo() {
+  const AppP = NATIVE ? (CAP.Plugins?.App || CAP.registerPlugin?.('App')) : null;
+  AppP?.getInfo?.().then(i => { nativeInfo = { version: i.version, build: i.build };
+    const el = $('#ver'); if (el) el.textContent = versionText(); }).catch(() => {});
+}
+function copyText(txt) {
+  const ok = () => toast('Copiado'), fallback = () => {
+    const t = document.createElement('textarea'); t.value = txt; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.appendChild(t); t.select();
+    try { document.execCommand('copy') ? ok() : toast(txt); } catch (e) { toast(txt); }
+    t.remove();
+  };
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(ok, fallback); else fallback();
 }
 
 /* ---------- Utilidades ---------- */
@@ -552,7 +610,7 @@ function initMap() {
   const box = $('#map'); if (!box) return;
   loadLeaflet().then(() => {
     if (tab !== 'mapa' || !document.body.contains(box)) return;
-    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const dark = isDark();
     mapObj = L.map(box, { zoomControl: true, attributionControl: false }).setView([-15.8, -47.9], 4);
     // Créditos do mapa (exigidos pela licença do OpenStreetMap) num botão "i" pequeno.
     const Info = L.Control.extend({ options: { position: 'bottomright' }, onAdd() {
@@ -635,6 +693,7 @@ function renderTabs() {
 }
 
 function render() {
+  applyTheme();
   if (mapObj) { mapObj.remove(); mapObj = null; }
   renderTabs();
   const app = $('#app');
@@ -897,6 +956,14 @@ function viewSettings() {
   return `
   <header><h1>Ajustes</h1></header>
   <section class="panel">
+    <h2>Aparência</h2>
+    <div class="seg-ctl" role="radiogroup" aria-label="Aparência">
+      ${[['claro', 'Claro'], ['escuro', 'Escuro'], ['sistema', 'Sistema']].map(([v, n]) =>
+        `<button type="button" role="radio" data-tema="${v}" aria-checked="${s.tema === v}" aria-pressed="${s.tema === v}">${n}</button>`).join('')}
+    </div>
+    <p class="small muted" style="margin:0">${s.tema === 'sistema' ? 'Segue o claro/escuro do aparelho.' : 'Fica assim mesmo se o aparelho mudar.'} As telas da viagem mantêm o painel grafite.</p>
+  </section>
+  <section class="panel">
     <h2>Moto</h2>
     <div class="grid2">
       ${f('volts', 'Voltagem (V)', s.volts, 1, 'Carregador 67,2 V = bateria de 60 V')}
@@ -923,6 +990,11 @@ function viewSettings() {
     </div>
     <input id="imp" type="file" accept="application/json,.json" hidden>
     <button class="danger block" id="wipe">Apagar tudo</button>
+  </section>
+  <section class="panel">
+    <h2>Sobre o Moto KM</h2>
+    <div class="row between"><span class="muted">Versão${NATIVE ? ' (build)' : ''}</span><strong class="num" style="font-size:22px" id="ver">${versionText()}</strong></div>
+    <button class="ghost block" id="copyVer">Copiar versão para relatar um problema</button>
   </section>
   <p class="small muted" style="text-align:center">${S.trips.length} viagens · ${S.charges.length} recargas</p>`;
 }
@@ -1007,6 +1079,10 @@ function bind() {
     save(); render(); toast('Recarga salva');
   });
 
+  app.querySelectorAll('[data-tema]').forEach(b => b.onclick = () => {
+    S.settings.tema = b.dataset.tema; save(); render();
+  });
+  $('#copyVer') && ($('#copyVer').onclick = () => copyText(`Moto KM ${versionText()} · ${NATIVE ? 'app iPhone' : 'site (PWA)'} · ${navigator.userAgent}`));
   app.querySelectorAll('[data-set]').forEach(i => i.onchange = () => {
     const v = parseFloat(String(i.value).replace(',', '.'));
     if (!(v >= 0)) { toast('Valor inválido'); i.value = S.settings[i.dataset.set]; return; }
@@ -1030,6 +1106,7 @@ function bind() {
 }
 
 /* ---------- Início ---------- */
+loadNativeInfo();
 render();
 if (S.active) {
   S.active.speed = 0; S.active.gps = 'aguardando';  // velocidade e sinal antigos não valem mais
