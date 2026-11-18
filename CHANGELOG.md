@@ -7,6 +7,7 @@ Mudanças relevantes do Moto KM. A versão pública fica no `package.json` e seg
 Próxima release sugerida: **1.2.0** (funcionalidades novas, compatíveis com os dados de antes).
 
 ### Novo
+- Rota em trechos: depois de uma pausa, de um erro do GPS ou de mais de 30 s sem posição confiável, a viagem começa um trecho novo. A lacuna aparece tracejada no mapa e nas miniaturas, e o resumo avisa quando ela ficou fora da distância.
 - Ajustes: **Aparência** com Claro, Escuro e Sistema (padrão). Em Sistema, acompanha o aparelho com o app aberto; no iPhone, a barra de status acompanha o tema.
 - Ajustes: **Sobre o Moto KM** com a versão (e o build no iPhone) e um botão para copiar ao relatar um problema.
 - Visual de painel elétrico nas telas da viagem: "Bora rodar", distância em destaque durante a viagem e resumo "Rolê salvo" com rota, duração, média, bateria e consumo estimado (#8).
@@ -14,6 +15,8 @@ Próxima release sugerida: **1.2.0** (funcionalidades novas, compatíveis com os
 - Autonomia de fábrica (40 km) em Ajustes e "Ainda dá para rodar" durante a viagem (#5).
 
 ### Corrigido
+- O trecho sem GPS não entra mais na distância nem no tempo em movimento. Antes era somado em linha reta.
+- Parado com GPS bom (semáforo) não vira lacuna, e o tempo parado não conta como tempo em movimento.
 - Viagem em andamento volta com os pontos já gravados se o app for fechado, e é salva uma vez só (#6).
 - A tela da viagem aparece na hora ao tocar em iniciar (#3).
 - A lista de viagens mostra a hora de chegada em vez do tempo em movimento com cara de horário (#1).

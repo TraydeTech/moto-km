@@ -6,7 +6,7 @@ Existem duas formas de usar:
 
 | | Site (PWA, tela inicial) | App iPhone (nativo) |
 |---|---|---|
-| GPS com a tela bloqueada | ❌ o iOS pausa; o trecho é estimado em linha reta | ✅ continua medindo, igual ao Strava |
+| GPS com a tela bloqueada | ❌ o iOS pausa; o trecho sem GPS fica fora da distância e aparece tracejado no mapa | ✅ continua medindo, igual ao Strava |
 | Instalação | abrir o site no Safari → Compartilhar → Tela de Início | Xcode (Mac) ou TestFlight |
 
 O iPhone **não deixa sites usarem o GPS com a tela bloqueada**. Por isso o Strava é um app nativo. ## Mapa e perigos no caminho
