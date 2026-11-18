@@ -372,10 +372,11 @@ function monthStart() { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 
 
 /* ---------- GPS ---------- */
 // No app do iPhone (Capacitor) o GPS nativo continua com a tela bloqueada, igual ao Strava.
-// No site (PWA) o iOS pausa o GPS quando a tela apaga; aí o trecho perdido é estimado em linha reta.
+// No site (PWA) o iOS pausa o GPS quando a tela apaga; o trecho sem GPS fica separado no mapa.
 const CAP = window.Capacitor;
 const NATIVE = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
 const BG = NATIVE ? (typeof CAP.registerPlugin === 'function' ? CAP.registerPlugin('BackgroundGeolocation') : CAP.Plugins?.BackgroundGeolocation) : null;
+const GPS_GAP_MS = 30000;
 let watchId = null, watchToken = 0, wake = null, ticker = null, lastSave = 0;
 
 function startTrip(dash) {
@@ -431,8 +432,11 @@ document.addEventListener('visibilitychange', () => {
 });
 
 function onErr(e) {
-  if (!S.active) return;
+  if (!S.active || S.active.pausedAt) return;
   S.active.gps = e.code === 1 ? 'negado' : 'sem sinal';
+  S.active.gpsInterrupted = true;
+  S.active.speed = 0;
+  saveActive();
   renderLive();
 }
 // Pausa: desliga o GPS e guarda quando começou. O tempo pausado fica fora do tempo da viagem
@@ -446,7 +450,7 @@ function pauseTrip() {
 function resumeTrip() {
   const A = S.active; if (!A || !A.pausedAt) return;
   A.pausedMs = (A.pausedMs || 0) + Math.max(0, Date.now() - A.pausedAt);
-  A.pausedAt = null; A.last = null; A.lastT = null; A.gps = 'aguardando';
+  A.pausedAt = null; A.last = null; A.lastT = null; A.lastFixT = null; A.gpsInterrupted = false; A.gps = 'aguardando';
   save(); render(); setTimeout(beginWatch, 30); toast('Bora de novo');
 }
 const pausedMs = (A, now = Date.now()) => (A.pausedMs || 0) + (A.pausedAt ? Math.max(0, now - A.pausedAt) : 0);
@@ -454,35 +458,50 @@ const pausedMs = (A, now = Date.now()) => (A.pausedMs || 0) + (A.pausedAt ? Math
 function onPos(p) {
   const A = S.active; if (!A || A.pausedAt) return;
   const c = p.coords, t = p.timestamp;
+  const lastFixT = A.lastFixT ?? A.lastT;
+  if (lastFixT != null && t <= lastFixT) return;
   A.acc = Math.round(c.accuracy);
   if (c.accuracy > 30) { A.gps = 'fraco'; renderLive(); return; }
-  A.gps = 'ok';
+
   const pt = [c.latitude, c.longitude];
-  if (!A.last) { A.last = pt; A.lastT = t; pushRoute(A, pt); checkHazards(pt); persist(); renderLive(); return; }
+  const gap = A.last && (A.gpsInterrupted || t - lastFixT > GPS_GAP_MS);
+  if (!A.last || gap) {
+    if (gap) A.gpsGaps = (A.gpsGaps || 0) + 1;
+    pushRoute(A, pt, A.route.length > 0);
+    A.last = pt; A.lastT = t; A.lastFixT = t;
+    A.gps = 'ok'; A.gpsInterrupted = false; A.speed = 0;
+    checkHazards(pt); persist(); renderLive(); return;
+  }
 
   const d = dist(A.last, pt), dt = (t - A.lastT) / 1000;
-  if (dt <= 0) return;
   const vCalc = d / dt * 3.6;
-  const gap = dt > 30;                           // GPS ficou parado (tela bloqueada no site ou app fechado)
-  const v = gap ? 0 : (c.speed != null && c.speed >= 0) ? c.speed * 3.6 : vCalc;
   if (vCalc > 100) return;                       // salto do GPS, ignora
+  A.gps = 'ok'; A.lastFixT = t;
+  const v = (c.speed != null && c.speed >= 0) ? c.speed * 3.6 : vCalc;
   if (d < Math.max(4, c.accuracy * 0.4)) {       // parado ou tremida do GPS
-    A.speed = v < 3 ? 0 : v; renderLive(); return;
+    A.lastT = t;
+    A.speed = v < 3 ? 0 : v; persist(); renderLive(); return;
   }
   A.m += d;
-  if (gap) {                                     // soma o trecho perdido em linha reta
-    if (vCalc > 5) A.movingMs += dt * 1000;
-    A.estM = (A.estM || 0) + d;
-    if (d >= 100) toast(`GPS ficou pausado ${dur(dt)}: somei ${fmt(d / 1000, 2)} km em linha reta`);
-  } else if (vCalc > 2) A.movingMs += dt * 1000;
+  if (vCalc > 2) A.movingMs += dt * 1000;
   A.maxKmh = Math.max(A.maxKmh, Math.min(v, 100));
   A.speed = v; A.last = pt; A.lastT = t;
   pushRoute(A, pt); checkHazards(pt); persist(); renderLive();
 }
-function pushRoute(A, pt) {
+function pushRoute(A, pt, newSegment = false) {
   const r = A.route, p = [+pt[0].toFixed(5), +pt[1].toFixed(5)];
-  if (!r.length || dist(r[r.length - 1], p) >= 15) r.push(p);
-  if (r.length > 1500) A.route = r.filter((_, i) => i % 2 === 0 || i === r.length - 1);
+  if (newSegment) p.push(true);                  // terceiro campo marca o início de um trecho
+  if (!r.length || newSegment || dist(r[r.length - 1], p) >= 15) r.push(p);
+  if (r.length > 1500) A.route = r.filter((point, i) =>
+    i % 2 === 0 || point[2] === true || r[i + 1]?.[2] === true || i === r.length - 1);
+}
+function routeSegments(route) {
+  const segments = [];
+  for (const [lat, lon, newSegment] of route || []) {
+    if (!segments.length || newSegment === true) segments.push([]);
+    segments[segments.length - 1].push([lat, lon]);
+  }
+  return segments;
 }
 function persist() {
   saveActive();                                   // a cada ponto: só a viagem em andamento, rápido
@@ -494,6 +513,7 @@ function finishTrip(dashEnd) {
   stopWatch();
   const trip = { id: Date.now(), start: A.start, end: Date.now(), km: A.m / 1000, movingSec: A.movingMs / 1000,
     maxKmh: A.maxKmh, dashStart: A.dashStart, dashEnd, route: A.route, estKm: (A.estM || 0) / 1000 };
+  if (A.gpsGaps) trip.gpsGaps = A.gpsGaps;
   const pms = pausedMs(A, trip.end); if (pms) trip.pausedSec = pms / 1000;
   S.active = null;
   if (S.trips.some(t => t.start === trip.start)) toast('Esta viagem já estava salva');
@@ -647,11 +667,11 @@ function initMap() {
     for (const t of S.trips) {
       if (!t.route || t.route.length < 2) continue;
       const on = mapFocus === t.id;
-      const line = L.polyline(t.route, { color: on ? '#2563EB' : accent, weight: on ? 6 : 4, opacity: mapFocus && !on ? 0.35 : 0.85 }).addTo(mapObj);
+      const line = L.polyline(routeSegments(t.route), { color: on ? '#2563EB' : accent, weight: on ? 6 : 4, opacity: mapFocus && !on ? 0.35 : 0.85 }).addTo(mapObj);
       line.bindPopup(`<strong>${fmt(t.km, 2)} km</strong><div class="muted small">${dia(t.start)} · ${hora(t.start)}${t.movingSec ? ` · ${dur(t.movingSec)}` : ''}</div>`);
-      if (on) bounds.push(...t.route);
+      if (on) bounds.push(...routeSegments(t.route).flat());
     }
-    if (S.active?.route?.length > 1) L.polyline(S.active.route, { color: '#2563EB', weight: 6 }).addTo(mapObj);
+    if (S.active?.route?.length > 1) L.polyline(routeSegments(S.active.route), { color: '#2563EB', weight: 6 }).addTo(mapObj);
     for (const h of hzActive()) L.marker([h.lat, h.lon], { icon: hzIcon(h) }).addTo(mapObj).bindPopup(hzPopup(h));
 
     // Segurar o dedo no mapa marca um perigo naquele ponto.
@@ -659,7 +679,7 @@ function initMap() {
 
     if (bounds.length) mapObj.fitBounds(bounds, { padding: [24, 24] });
     else {
-      const all = S.trips.flatMap(t => t.route || []).concat(hzActive().map(h => [h.lat, h.lon]));
+      const all = S.trips.flatMap(t => routeSegments(t.route).flat()).concat(hzActive().map(h => [h.lat, h.lon]));
       if (all.length) mapObj.fitBounds(all, { padding: [24, 24], maxZoom: 15 });
     }
     hereNow().then(p => {
@@ -764,6 +784,7 @@ function viewSummary(t) {
     <div class="row between small"><span class="muted">Consumo estimado</span>
       <strong>${wh ? `${used} ${used > 1 ? 'tracinhos' : 'tracinho'} · ~${fmt(wh / 1000, 2)} kWh` : 'dados insuficientes'}</strong></div>
     ${wh ? '' : '<p class="note" style="margin:0">Os tracinhos não baixaram nesta viagem. O consumo aparece quando a bateria cair pelo menos um tracinho.</p>'}
+    ${t.gpsGaps ? '<p class="note" style="margin:0">Trechos sem sinal de GPS ficaram fora da rota e da distância.</p>' : ''}
     ${t.estKm >= 0.05 ? `<p class="note" style="margin:0">${fmt(t.estKm, 2)} km foram estimados em linha reta porque o GPS ficou parado.</p>` : ''}
   </section>
   <button class="primary block go" id="closeSummary">Fechar</button>`;
@@ -798,7 +819,8 @@ function renderLive() {
   $('#lmax').textContent = Math.round(A.maxKmh);
   const r = kmRestante(A); if ($('#lrest')) $('#lrest').textContent = r == null ? '–' : `~${fmt(r, r < 10 ? 1 : 0)} km`;
   const g = $('#gps'), map = { ok: ['ok', `GPS ±${A.acc} m`], fraco: ['bad', `Sinal fraco ±${A.acc} m`], negado: ['bad', 'GPS bloqueado'], 'sem sinal': ['bad', 'Sem sinal'], aguardando: ['', 'Procurando GPS…'] };
-  const [cls, txt] = A.pausedAt ? ['', `Pausada há ${dur((Date.now() - A.pausedAt) / 1000)}`] : (map[A.gps] || map.aguardando);
+  const gps = A.gps === 'ok' && Date.now() - (A.lastFixT ?? A.lastT) > GPS_GAP_MS ? 'sem sinal' : A.gps;
+  const [cls, txt] = A.pausedAt ? ['', `Pausada há ${dur((Date.now() - A.pausedAt) / 1000)}`] : (map[gps] || map.aguardando);
   g.innerHTML = `<span class="dot ${cls}"></span>${txt}`;
 }
 
@@ -838,7 +860,7 @@ function routeSVG(r) {
   const minLa = Math.min(...la), maxLa = Math.max(...la), minLo = Math.min(...lo), maxLo = Math.max(...lo);
   const k = Math.cos(minLa * Math.PI / 180), w = (maxLo - minLo) * k || 1e-6, h = (maxLa - minLa) || 1e-6;
   const sc = Math.min(44 / w, 32 / h), ox = (52 - w * sc) / 2, oy = (40 - h * sc) / 2;
-  const d = r.map((p, i) => `${i ? 'L' : 'M'}${(ox + (p[1] - minLo) * k * sc).toFixed(1)} ${(oy + (maxLa - p[0]) * sc).toFixed(1)}`).join('');
+  const d = r.map((p, i) => `${i && p[2] !== true ? 'L' : 'M'}${(ox + (p[1] - minLo) * k * sc).toFixed(1)} ${(oy + (maxLa - p[0]) * sc).toFixed(1)}`).join('');
   return `<svg viewBox="0 0 52 40" aria-hidden="true"><path d="${d}"/></svg>`;
 }
 
