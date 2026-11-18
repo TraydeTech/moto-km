@@ -847,7 +847,9 @@ function renderLive() {
   $('#lmax').textContent = Math.round(A.maxKmh);
   const r = kmRestante(A); if ($('#lrest')) $('#lrest').textContent = r == null ? '–' : `~${fmt(r, r < 10 ? 1 : 0)} km`;
   const g = $('#gps'), map = { ok: ['ok', `GPS ±${A.acc} m`], fraco: ['bad', `Sinal fraco ±${A.acc} m`], negado: ['bad', 'GPS bloqueado'], 'sem sinal': ['bad', 'Sem sinal'], aguardando: ['', 'Procurando GPS…'] };
-  const [cls, txt] = A.pausedAt ? ['', `Pausada há ${dur((Date.now() - A.pausedAt) / 1000)}`] : (map[A.gps] || map.aguardando);
+  // Mais de 30 s sem posição confiável: avisa "Sem sinal" mesmo sem erro do GPS (a próxima posição abre trecho novo).
+  const seen = A.seenT ?? A.lastT, gps = A.gps === 'ok' && seen != null && Date.now() - seen > GAP_MS ? 'sem sinal' : A.gps;
+  const [cls, txt] = A.pausedAt ? ['', `Pausada há ${dur((Date.now() - A.pausedAt) / 1000)}`] : (map[gps] || map.aguardando);
   g.innerHTML = `<span class="dot ${cls}"></span>${txt}`;
 }
 
