@@ -15,6 +15,8 @@ Próxima release sugerida: **1.2.0** (funcionalidades novas, compatíveis com os
 - Autonomia de fábrica (40 km) em Ajustes e "Ainda dá para rodar" durante a viagem (#5).
 
 ### Corrigido
+- Mapa no tema escuro (Escuro, ou Sistema com o iPhone escuro): ruas, nomes e pontos de referência legíveis. O estilo escuro pronto da OpenFreeMap deixava as ruas quase da cor do fundo e não tinha pontos de referência; agora o mapa claro é recolorido no app. Controles e balões do mapa no grafite, e trocar o tema com a aba Mapa aberta muda o estilo sem perder o zoom.
+- Mapa: a linha do trajeto ganha contorno escuro, para aparecer sobre qualquer rua. Viagens novas mostram as interrupções: depois de uma pausa a linha recomeça sem ligar os pontos, e o trecho sem GPS (somado em linha reta) aparece tracejado.
 - Viagem em andamento volta com os pontos já gravados se o app for fechado, e é salva uma vez só (#6).
 - A tela da viagem aparece na hora ao tocar em iniciar (#3).
 - A lista de viagens mostra a hora de chegada em vez do tempo em movimento com cara de horário (#1).

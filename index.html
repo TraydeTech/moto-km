@@ -181,6 +181,16 @@ button.warn{background:var(--haz);color:var(--haz-ink)}
 .map-info span{background:rgba(255,255,255,.9);color:#333;font-size:11px;padding:4px 8px;border-radius:8px}
 .map-info a{color:#1d4ed8}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted)}
+/* Mapa no tema escuro: controles e balões no grafite do app. Se cair no mapa simples (sem WebGL),
+   os quadros do OpenStreetMap são escurecidos com filtro; o mapa vetorial já vem com estilo escuro próprio. */
+#map.map-dark{background:#14181D}
+.map-dark .leaflet-bar a{background:#1A1E23;color:#EDF0F2;border-bottom-color:#2A3038}
+.map-dark .leaflet-bar{border-color:rgba(255,255,255,.18)}
+.map-dark .leaflet-popup-content-wrapper,.map-dark .leaflet-popup-tip{background:#1A1E23;color:#EDF0F2}
+.map-dark .leaflet-popup-close-button{color:#8F99A3}
+.map-dark .map-info button,.map-dark .map-info span{background:rgba(26,30,35,.92);color:#EDF0F2}
+.map-dark .map-info a{color:#93C5FD}
+.map-dark img.leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.85)}
 @media (max-height:700px){.big{font-size:72px!important}.hero{gap:8px!important;padding:14px}.kpis{padding-top:8px}
   .kpis .num{font-size:26px}button.go{min-height:56px;font-size:23px}main{gap:12px;padding-top:10px}h1{font-size:25px}}
 @media (max-width:360px){.gauge .speed{font-size:88px}.grid3{grid-template-columns:1fr 1fr}.big{font-size:84px!important}.kpis .num{font-size:26px}}
@@ -316,7 +326,7 @@ function applyTheme() {
 sysDark.addEventListener?.('change', () => {
   if (S.settings.tema !== 'sistema') return;
   applyTheme();
-  if (tab === 'mapa') render();                   // o mapa tem estilo claro e escuro próprios
+  if (tab === 'mapa') setMapTheme();              // troca o estilo do mapa sem perder o zoom e a posição
 });
 
 /* ---------- Versão ---------- */
@@ -504,6 +514,7 @@ function resumeTrip() {
   const A = S.active; if (!A || !A.pausedAt) return;
   A.pausedMs = (A.pausedMs || 0) + Math.max(0, Date.now() - A.pausedAt);
   A.pausedAt = null; A.last = null; A.lastT = null; A.gps = 'aguardando';
+  A.brk = 'pausa';                                // o mapa não liga o ponto da pausa ao da volta
   save(); render(); setTimeout(beginWatch, 30); toast('Bora de novo');
 }
 const pausedMs = (A, now = Date.now()) => (A.pausedMs || 0) + (A.pausedAt ? Math.max(0, now - A.pausedAt) : 0);
@@ -528,6 +539,7 @@ function onPos(p) {
   }
   A.m += d;
   if (gap) {                                     // soma o trecho perdido em linha reta
+    A.brk = 'gps';                               // no mapa, esse trecho aparece tracejado
     if (vCalc > 5) A.movingMs += dt * 1000;
     A.estM = (A.estM || 0) + d;
     if (d >= 100) toast(`GPS ficou pausado ${dur(dt)}: somei ${fmt(d / 1000, 2)} km em linha reta`);
@@ -536,10 +548,29 @@ function onPos(p) {
   A.speed = v; A.last = pt; A.lastT = t;
   pushRoute(A, pt); checkHazards(pt); persist(); renderLive();
 }
+// breaks: [[índice, 'pausa' | 'gps'], ...] marca onde o trajeto recomeça depois de uma pausa
+// ou de um trecho sem GPS. Viagens antigas não têm breaks e continuam como uma linha só.
 function pushRoute(A, pt) {
   const r = A.route, p = [+pt[0].toFixed(5), +pt[1].toFixed(5)];
-  if (!r.length || dist(r[r.length - 1], p) >= 15) r.push(p);
-  if (r.length > 1500) A.route = r.filter((_, i) => i % 2 === 0 || i === r.length - 1);
+  if (!r.length || dist(r[r.length - 1], p) >= 15) {
+    if (A.brk && r.length) (A.breaks = A.breaks || []).push([r.length, A.brk]);
+    r.push(p);
+  }
+  A.brk = null;
+  if (r.length > 1500) {
+    A.route = r.filter((_, i) => i % 2 === 0 || i === r.length - 1);
+    if (A.breaks) A.breaks = A.breaks.map(([i, k]) => [Math.ceil(i / 2), k]);
+  }
+}
+// Divide o trajeto nos trechos gravados: [{ pts, after }] (after = como começou: 'pausa', 'gps' ou nada).
+function routeParts(route, breaks) {
+  const out = []; let from = 0, kind = null;
+  for (const [i, k] of [...(breaks || [])].sort((a, b) => a[0] - b[0])) {
+    if (i <= from || i >= route.length) continue;
+    out.push({ pts: route.slice(from, i), after: kind }); from = i; kind = k;
+  }
+  out.push({ pts: route.slice(from), after: kind });
+  return out;
 }
 function persist() {
   saveActive();                                   // a cada ponto: só a viagem em andamento, rápido
@@ -551,6 +582,7 @@ function finishTrip(dashEnd) {
   stopWatch();
   const trip = { id: Date.now(), start: A.start, end: Date.now(), km: A.m / 1000, movingSec: A.movingMs / 1000,
     maxKmh: A.maxKmh, dashStart: A.dashStart, dashEnd, route: A.route, estKm: (A.estM || 0) / 1000 };
+  if (A.breaks?.length) trip.breaks = A.breaks;
   const pms = pausedMs(A, trip.end); if (pms) trip.pausedSec = pms / 1000;
   S.active = null;
   if (S.trips.some(t => t.start === trip.start)) toast('Esta viagem já estava salva');
@@ -663,11 +695,82 @@ function hzPopup(h) {
     ${h.note ? `<div>${esc(h.note)}</div>` : ''}
     <div class="acts"><button type="button" data-hz-ok="${h.id}">Ainda está lá</button><button type="button" class="ghost" data-hz-gone="${h.id}">Não está mais</button></div>`;
 }
+// Estilos do mapa (OpenFreeMap, grátis e sem chave). O claro é o "liberty". O escuro é o mesmo
+// "liberty" recolorido aqui: o estilo "dark" pronto da OpenFreeMap tem ruas quase da cor do fundo,
+// nomes apagados e nenhum ponto de referência, e fica ilegível no iPhone.
+const MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+let darkStyleP = null;
+function mapStyle(dark) {
+  if (!dark) return Promise.resolve(MAP_STYLE);
+  return darkStyleP || (darkStyleP = fetch(MAP_STYLE).then(r => { if (!r.ok) throw new Error('style'); return r.json(); })
+    .then(darkenStyle).catch(e => { darkStyleP = null; throw e; }));
+}
+function darkenStyle(st) {
+  const C = { bg: '#14181D', land: '#1A1F25', park: '#1A2A20', parkLine: '#24392B', other: '#1D2329', water: '#1B3550', waterLine: '#2B4F75',
+    building: '#22282F', buildingLine: '#2F363F', casing: '#0B0E11', path: '#353C45', minor: '#424B56', major: '#65707C', motorway: '#A88B5C',
+    rail: '#56606B', boundary: '#56606B', place: '#EEF1F4', placeMinor: '#B9C2CB', road: '#D9DFE5', poi: '#C3CCD5', waterLabel: '#8DBDE6', halo: '#0E1114' };
+  const set = (l, k, v) => { (l.paint = l.paint || {})[k] = v; };
+  st.layers = st.layers.filter(l => l.type !== 'raster');      // relevo sombreado claro: some no escuro
+  for (const l of st.layers) {
+    const id = l.id, sl = l['source-layer'];
+    if (l.type === 'background') set(l, 'background-color', C.bg);
+    else if (l.type === 'fill' || l.type === 'fill-extrusion') {
+      const k = l.type === 'fill' ? 'fill-color' : 'fill-extrusion-color';
+      if (id === 'road_area_pattern') continue;
+      const c = sl === 'water' ? C.water : sl === 'building' ? C.building : /park|grass|wood|wetland/.test(id) ? C.park
+        : id === 'landuse_residential' ? C.land : C.other;
+      set(l, k, c);
+      if (l.paint['fill-outline-color']) set(l, 'fill-outline-color', sl === 'building' ? C.buildingLine : sl === 'park' ? C.parkLine : c);
+    } else if (l.type === 'line') {
+      const c = sl === 'waterway' ? C.waterLine : sl === 'boundary' ? C.boundary : sl === 'park' ? C.parkLine
+        : sl === 'aeroway' ? C.minor : /casing/.test(id) ? C.casing : /rail/.test(id) ? C.rail : /path|pedestrian/.test(id) ? C.path
+        : /motorway/.test(id) ? C.motorway : /trunk|primary|secondary|tertiary|link/.test(id) ? C.major : C.minor;
+      set(l, 'line-color', c);
+    } else if (l.type === 'symbol' && l.layout?.['text-field']) {
+      const c = sl === 'water_name' || sl === 'waterway' || id === 'poi_transit' ? C.waterLabel : sl === 'transportation_name' ? C.road
+        : sl === 'poi' || sl === 'aerodrome_label' ? C.poi : id === 'label_other' || id === 'label_state' ? C.placeMinor : C.place;
+      if (/shield/.test(id)) continue;
+      set(l, 'text-color', c); set(l, 'text-halo-color', C.halo); set(l, 'text-halo-width', 1.5);
+    }
+  }
+  return st;
+}
+// Cores das linhas por tema: lima do app; a viagem em foco ou em andamento em azul (mais claro no escuro).
+const routeColors = dark => ({ line: dark ? '#B6F04A' : '#9BDB2C', focus: dark ? '#60A5FA' : '#2563EB', casing: dark ? '#0B0E11' : '#1B1F24' });
+let mapGl = null, mapLines = [];
+function setMapTheme() {
+  const box = $('#map'); if (!mapObj || !box) return;
+  const dark = isDark(), col = routeColors(dark);
+  box.classList.toggle('map-dark', dark);
+  mapLines.forEach(({ line, kind }) => line.setStyle({ color: col[kind] }));
+  if (mapGl) mapStyle(dark).then(s => { if (mapGl && isDark() === dark) mapGl.getMaplibreMap().setStyle(s); }).catch(() => {});
+}
+function drawRoute(route, breaks, opts, on) {
+  // Trechos gravados em linha cheia; trecho sem GPS (somado em linha reta) tracejado; pausa sem ligação.
+  const col = routeColors(isDark()), kind = on ? 'focus' : 'line', parts = routeParts(route, breaks), layers = [];
+  parts.forEach((p, i) => {
+    if (p.after === 'gps' && i) layers.push([[parts[i - 1].pts[parts[i - 1].pts.length - 1], p.pts[0]], { dashArray: '2 9', weight: Math.max(3, opts.weight - 1) }]);
+    if (p.pts.length > 1) layers.push([p.pts, {}]);
+    else if (p.pts.length === 1) layers.push([[p.pts[0], p.pts[0]], {}]);
+  });
+  const all = [];
+  for (const [pts, o] of layers) {        // contorno escuro por baixo: a linha aparece sobre qualquer rua
+    const c = L.polyline(pts, { color: col.casing, weight: (o.weight || opts.weight) + 3, opacity: opts.opacity * 0.55, dashArray: o.dashArray, interactive: false, lineCap: 'round' }).addTo(mapObj);
+    mapLines.push({ line: c, kind: 'casing' });
+  }
+  for (const [pts, o] of layers) {
+    const ln = L.polyline(pts, { color: col[kind], weight: o.weight || opts.weight, opacity: opts.opacity, dashArray: o.dashArray, lineCap: 'round' }).addTo(mapObj);
+    mapLines.push({ line: ln, kind }); all.push(ln);
+  }
+  return all;
+}
 function initMap() {
   const box = $('#map'); if (!box) return;
   loadLeaflet().then(() => {
     if (tab !== 'mapa' || !document.body.contains(box)) return;
     const dark = isDark();
+    mapLines = []; mapGl = null;
+    box.classList.toggle('map-dark', dark);
     mapObj = L.map(box, { zoomControl: true, attributionControl: false }).setView([-15.8, -47.9], 4);
     // Créditos do mapa (exigidos pela licença do OpenStreetMap) num botão "i" pequeno.
     const Info = L.Control.extend({ options: { position: 'bottomright' }, onAdd() {
@@ -678,37 +781,41 @@ function initMap() {
       return d;
     } });
     new Info().addTo(mapObj);
-    // Mapa da OpenFreeMap: grátis e sem chave (funciona dentro do app do iPhone).
-    // Se o celular não tiver WebGL ou o mapa não carregar, usa os quadros do OpenStreetMap.
+    // Mapa vetorial da OpenFreeMap (funciona dentro do app do iPhone). Se o celular não tiver WebGL
+    // ou o estilo não carregar, usa os quadros do OpenStreetMap (escurecidos por CSS no tema escuro).
     const OSM_ATTR = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
     const useOsm = () => { if (mapObj && !mapObj._osm) { mapObj._osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: OSM_ATTR }).addTo(mapObj); } };
-    let gl = null;
-    try {
-      const webgl = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
-      if (!L.maplibreGL || !window.maplibregl || !webgl) throw 0;
-      const style = n => `https://tiles.openfreemap.org/styles/${n}`;
-      gl = L.maplibreGL({ style: style(dark ? 'dark' : 'liberty') }).addTo(mapObj);
-      const m = gl.getMaplibreMap();
-      let loaded = false, triedLight = !dark;
-      m.on('load', () => { loaded = true; });
-      m.on('error', () => {
-        if (loaded || !mapObj) return;
-        if (!triedLight) { triedLight = true; m.setStyle(style('liberty')); return; }
-        mapObj.removeLayer(gl); gl = null; useOsm();
-      });
-    } catch (e) { if (gl) mapObj.removeLayer(gl); useOsm(); }
+    const webgl = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; } })();
+    if (!L.maplibreGL || !window.maplibregl || !webgl) useOsm();
+    else {
+      const owner = mapObj;
+      mapStyle(dark).then(style => {
+        if (mapObj !== owner) return;
+        const gl = L.maplibreGL({ style }).addTo(mapObj);
+        mapGl = gl;
+        const m = gl.getMaplibreMap();
+        let loaded = false;
+        m.on('load', () => { loaded = true; });
+        m.on('styleimagemissing', () => {});        // ícones que o estilo não tem: ignora sem quebrar
+        // Só desiste do mapa vetorial se o estilo falhar antes de abrir (um quadro que falha não conta).
+        m.on('error', e => {
+          if (loaded || mapObj !== owner || e?.tile || e?.sourceId) return;
+          mapObj.removeLayer(gl); mapGl = null; useOsm();
+        });
+      }).catch(() => { if (mapObj === owner) useOsm(); });
+    }
     setTimeout(() => mapObj?.invalidateSize(), 300);
 
     const bounds = [];
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#B45309';
     for (const t of S.trips) {
       if (!t.route || t.route.length < 2) continue;
       const on = mapFocus === t.id;
-      const line = L.polyline(t.route, { color: on ? '#2563EB' : accent, weight: on ? 6 : 4, opacity: mapFocus && !on ? 0.35 : 0.85 }).addTo(mapObj);
-      line.bindPopup(`<strong>${fmt(t.km, 2)} km</strong><div class="muted small">${dia(t.start)} · ${hora(t.start)}${t.movingSec ? ` · ${dur(t.movingSec)}` : ''}</div>`);
+      const lines = drawRoute(t.route, t.breaks, { weight: on ? 6 : 4, opacity: mapFocus && !on ? 0.35 : 0.9 }, on);
+      const pop = `<strong>${fmt(t.km, 2)} km</strong><div class="muted small">${dia(t.start)} · ${hora(t.start)}${t.movingSec ? ` · ${dur(t.movingSec)}` : ''}</div>`;
+      lines.forEach(l => l.bindPopup(pop));
       if (on) bounds.push(...t.route);
     }
-    if (S.active?.route?.length > 1) L.polyline(S.active.route, { color: '#2563EB', weight: 6 }).addTo(mapObj);
+    if (S.active?.route?.length > 1) drawRoute(S.active.route, S.active.breaks, { weight: 6, opacity: 1 }, true);
     for (const h of hzActive()) L.marker([h.lat, h.lon], { icon: hzIcon(h) }).addTo(mapObj).bindPopup(hzPopup(h));
 
     // Segurar o dedo no mapa marca um perigo naquele ponto.
@@ -1008,7 +1115,7 @@ function renderTabs() {
 
 function render() {
   applyTheme();
-  if (mapObj) { mapObj.remove(); mapObj = null; }
+  if (mapObj) { mapObj.remove(); mapObj = null; mapGl = null; mapLines = []; }
   renderTabs();
   const app = $('#app');
   const sum = !S.active && summaryId && S.trips.find(t => t.id === summaryId);
@@ -1025,7 +1132,7 @@ function render() {
 // Tempo da viagem sem as pausas.
 const tripSec = t => Math.max(0, (t.end - t.start) / 1000 - (t.pausedSec || 0));
 function lastRideHTML(t) {
-  return `<div class="ride">${routeSVG(t.route)}<div>
+  return `<div class="ride">${routeSVG(t.route, t.breaks)}<div>
     <div class="row between"><span class="num" style="font-size:24px">${fmt(t.km, 2)}<span class="unit">km</span></span>
       <span class="small muted">${dia(t.start)} · ${hora(t.start)}</span></div>
     <div class="row between small"><span class="muted">${durMin(tripSec(t))}</span>
@@ -1066,7 +1173,7 @@ function viewSummary(t) {
   return `
   <header class="row between"><span class="done-badge">✓ Rolê salvo</span><span class="small muted">${dia(t.start)} · ${hora(t.start)} → ${hora(t.end)}</span></header>
   <section class="panel hero appear" style="gap:14px">
-    ${t.route?.length > 1 ? routeSVG(t.route).replace('<svg ', '<svg class="route-big" ') : ''}
+    ${t.route?.length > 1 ? routeSVG(t.route, t.breaks).replace('<svg ', '<svg class="route-big" ') : ''}
     <div class="big" style="font-size:88px">${fmt(t.km, 2)}<span class="unit">km</span></div>
     <div class="kpis">
       <div class="stat"><span class="label">Duração</span><span class="num">${durMin(tripSec(t))}</span><span class="small muted">${t.pausedSec ? `+ ${durMin(t.pausedSec)} pausado` : 'sem pausa'}</span></div>
@@ -1148,13 +1255,14 @@ function chartSVG() {
   });
   return s + '</svg>';
 }
-function routeSVG(r) {
+function routeSVG(r, breaks) {
   if (!r || r.length < 2) return '<svg viewBox="0 0 52 40" aria-hidden="true"></svg>';
   const la = r.map(p => p[0]), lo = r.map(p => p[1]);
   const minLa = Math.min(...la), maxLa = Math.max(...la), minLo = Math.min(...lo), maxLo = Math.max(...lo);
   const k = Math.cos(minLa * Math.PI / 180), w = (maxLo - minLo) * k || 1e-6, h = (maxLa - minLa) || 1e-6;
   const sc = Math.min(44 / w, 32 / h), ox = (52 - w * sc) / 2, oy = (40 - h * sc) / 2;
-  const d = r.map((p, i) => `${i ? 'L' : 'M'}${(ox + (p[1] - minLo) * k * sc).toFixed(1)} ${(oy + (maxLa - p[0]) * sc).toFixed(1)}`).join('');
+  const cut = new Set((breaks || []).filter(b => b[1] === 'pausa').map(b => b[0]));  // pausa: a linha recomeça sem ligar
+  const d = r.map((p, i) => `${i && !cut.has(i) ? 'L' : 'M'}${(ox + (p[1] - minLo) * k * sc).toFixed(1)} ${(oy + (maxLa - p[0]) * sc).toFixed(1)}`).join('');
   return `<svg viewBox="0 0 52 40" aria-hidden="true"><path d="${d}"/></svg>`;
 }
 
@@ -1196,7 +1304,7 @@ function viewReport() {
     <div class="row between"><h2>Viagens</h2><button class="ghost" id="manual" style="min-height:40px;padding:8px 14px;font-size:14px">+ Manual</button></div>
     ${trips.length ? `<div class="trips">${trips.map(t => `
       <div class="trip"${t.route?.length > 1 ? ` data-trip="${t.id}" role="button" tabindex="0" aria-label="Ver viagem no mapa"` : ''}>
-        ${routeSVG(t.route)}
+        ${routeSVG(t.route, t.breaks)}
         <div style="min-width:0">
           <div class="row" style="gap:8px"><span class="num km">${fmt(t.km, 2)}</span><span class="small muted">km</span></div>
           <div class="small muted">${dia(t.start)} · ${hora(t.start)}${t.end && t.end - t.start >= 60000 ? ` → ${hora(t.end)}` : ''}${t.movingSec ? ` · ${durMin(t.movingSec)}` : ''}${t.maxKmh ? ` · máx ${Math.round(t.maxKmh)} km/h` : ''}</div>
