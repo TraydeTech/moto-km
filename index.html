@@ -181,6 +181,10 @@ button.warn{background:var(--haz);color:var(--haz-ink)}
 .map-info span{background:rgba(255,255,255,.9);color:#333;font-size:11px;padding:4px 8px;border-radius:8px}
 .map-info a{color:#1d4ed8}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted)}
+@media (max-height:700px){.big{font-size:72px!important}.hero{gap:8px!important;padding:14px}.kpis{padding-top:8px}
+  .kpis .num{font-size:26px}button.go{min-height:56px;font-size:23px}main{gap:12px;padding-top:10px}h1{font-size:25px}}
+@media (max-width:360px){.gauge .speed{font-size:88px}.grid3{grid-template-columns:1fr 1fr}.big{font-size:84px!important}.kpis .num{font-size:26px}}
+@media (prefers-reduced-motion:no-preference){button{transition:transform .08s}button:active{transform:scale(.97)}}
 /* Comunidade: feed, publicar e mensagens (modo de teste, dados só no aparelho) */
 .avatar{flex:none;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:700 15px var(--display);color:#0F1405;background:var(--c,#B6F04A)}
 .tag-test{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:6px;
@@ -237,10 +241,6 @@ textarea{font:400 16px/1.4 var(--body);color:var(--fg);background:var(--bg);bord
 .chat-bar input{border-radius:999px}
 .chat-bar button{border-radius:999px;padding:10px 16px}
 .back{background:transparent;min-height:44px;padding:6px 8px 6px 0;font-size:16px;color:var(--accent-txt)}
-@media (max-height:700px){.big{font-size:72px!important}.hero{gap:8px!important;padding:14px}.kpis{padding-top:8px}
-  .kpis .num{font-size:26px}button.go{min-height:56px;font-size:23px}main{gap:12px;padding-top:10px}h1{font-size:25px}}
-@media (max-width:360px){.gauge .speed{font-size:88px}.grid3{grid-template-columns:1fr 1fr}.big{font-size:84px!important}.kpis .num{font-size:26px}}
-@media (prefers-reduced-motion:no-preference){button{transition:transform .08s}button:active{transform:scale(.97)}}
 </style>
 </head>
 <body>
