@@ -117,7 +117,7 @@ input,select{font:500 16px var(--body);color:var(--fg);background:var(--bg);bord
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:center;
   padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);z-index:5}
 nav .tabs{display:flex;width:100%;max-width:560px}
-nav button{flex:1;flex-direction:column;gap:2px;background:transparent;border-radius:0;font-size:12px;font-weight:600;color:var(--muted);padding:10px 4px;min-height:60px}
+nav button{flex:1;min-width:0;flex-direction:column;gap:2px;background:transparent;border-radius:0;font-size:11px;font-weight:600;color:var(--muted);padding:10px 2px;min-height:60px;letter-spacing:-.01em}
 nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 nav button[aria-current="page"]{color:var(--accent-txt)}
 
@@ -181,6 +181,62 @@ button.warn{background:var(--haz);color:var(--haz-ink)}
 .map-info span{background:rgba(255,255,255,.9);color:#333;font-size:11px;padding:4px 8px;border-radius:8px}
 .map-info a{color:#1d4ed8}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted)}
+/* Comunidade: feed, publicar e mensagens (modo de teste, dados só no aparelho) */
+.avatar{flex:none;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:700 15px var(--display);color:#0F1405;background:var(--c,#B6F04A)}
+.tag-test{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:6px;
+  border:1px dashed var(--muted);color:var(--muted);vertical-align:2px;margin-left:6px}
+button.chip{min-height:40px;padding:4px 10px 4px 4px;border-radius:999px;font-size:14px;background:var(--panel);border:1px solid var(--line);gap:8px}
+button.iconbtn{position:relative;min-height:44px;width:44px;padding:0;border-radius:50%;background:var(--panel);border:1px solid var(--line)}
+.iconbtn svg,.post-acts svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.badge{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:10px;background:var(--low);color:#fff;font:700 11px/20px var(--body);padding:0 5px;text-align:center}
+nav button .tab-dot{position:absolute;top:8px;margin-left:22px;width:9px;height:9px;border-radius:50%;background:var(--low)}
+nav button{position:relative}
+.post{padding:0;gap:0;overflow:hidden}
+.post-head{display:flex;align-items:center;gap:10px;padding:12px 12px 10px}
+.post-head .who{flex:1;min-width:0;line-height:1.25}
+.post-head .x{background:transparent;color:var(--muted);min-height:36px;padding:6px 10px;font-size:20px}
+.post-photo{display:block;width:100%;height:auto;max-height:560px;object-fit:cover;background:var(--seg-off)}
+.post-photo:not([src]){aspect-ratio:4/3}
+.post-route{position:relative;display:block;width:100%;padding:0;border-radius:0;background:#14171B;color:#F2F5F7;min-height:0;text-align:left}
+.post-photo + .post-route{border-top:1px solid #2C333B}
+.post-route svg{display:block;width:100%;height:auto;max-height:260px;aspect-ratio:52/36;padding:14px 18px 54px}
+.post-route svg path{fill:none;stroke:#B6F04A;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.post-route .km{position:absolute;left:14px;bottom:10px;font:700 40px/1 var(--display);font-variant-numeric:tabular-nums}
+.post-route .km small{font-size:15px;font-weight:600;margin-left:3px;color:#9AA4AE}
+.post-route .meta{position:absolute;right:14px;bottom:14px;font-size:12px;color:#9AA4AE;text-align:right}
+.post-route.no-route{padding:16px 14px 56px}
+.post-acts{display:flex;align-items:center;gap:4px;padding:6px 6px 0}
+.post-acts button{background:transparent;min-height:44px;padding:8px 10px;font-size:15px;gap:6px;color:var(--fg)}
+.post-acts button.like[aria-pressed="true"]{color:var(--low)}
+.post-acts button.like[aria-pressed="true"] svg{fill:currentColor}
+.post-acts button:disabled{opacity:.45;cursor:default}
+.post-cap{margin:0;padding:2px 14px 14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.post-cap:empty{display:none}
+.pick-list{display:flex;flex-direction:column;max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.pick-list label{display:grid;grid-template-columns:22px 52px 1fr;gap:10px;align-items:center;padding:8px 12px;border-top:1px solid var(--line);cursor:pointer}
+.pick-list label:first-child{border-top:0}
+.pick-list input{width:20px;height:20px;min-height:0;accent-color:var(--accent);margin:0}
+.pick-list svg{width:52px;height:40px}
+.pick-list svg path{fill:none;stroke:var(--route);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+textarea{font:400 16px/1.4 var(--body);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;width:100%;min-height:84px;resize:vertical}
+.photo-pick{display:flex;gap:10px;align-items:center}
+.photo-pick img{width:64px;height:64px;object-fit:cover;border-radius:10px}
+.conv{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:12px 4px;border-top:1px solid var(--line);
+  background:transparent;border-radius:0;min-height:0;text-align:left;font-weight:400;width:100%}
+.conv:first-child{border-top:0}
+.conv .prev{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv.unread .prev{color:var(--fg);font-weight:600}
+.chat{display:flex;flex-direction:column;gap:6px;padding-bottom:84px}
+.bub{max-width:78%;padding:9px 12px;border-radius:18px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.35}
+.bub.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:6px}
+.bub.them{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:6px}
+.bub time{display:block;font-size:11px;opacity:.65;margin-top:2px}
+.chat-bar{position:fixed;left:0;right:0;bottom:calc(60px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--bg);border-top:1px solid var(--line);
+  display:flex;justify-content:center;padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px))}
+.chat-bar form{display:flex;gap:8px;width:100%;max-width:528px}
+.chat-bar input{border-radius:999px}
+.chat-bar button{border-radius:999px;padding:10px 16px}
+.back{background:transparent;min-height:44px;padding:6px 8px 6px 0;font-size:16px;color:var(--accent-txt)}
 @media (max-height:700px){.big{font-size:72px!important}.hero{gap:8px!important;padding:14px}.kpis{padding-top:8px}
   .kpis .num{font-size:26px}button.go{min-height:56px;font-size:23px}main{gap:12px;padding-top:10px}h1{font-size:25px}}
 @media (max-width:360px){.gauge .speed{font-size:88px}.grid3{grid-template-columns:1fr 1fr}.big{font-size:84px!important}.kpis .num{font-size:26px}}
@@ -192,6 +248,7 @@ button.warn{background:var(--haz);color:var(--haz-ink)}
 <nav><div class="tabs" id="tabs"></div></nav>
 <div id="layer"></div>
 
+<script src="community-store.js"></script>
 <script>
 'use strict';
 /* ---------- Dados ---------- */
@@ -678,10 +735,263 @@ document.addEventListener('click', e => {
   if (gone) { hazardGone(+gone.dataset.hzGone); render(); }
 });
 
+/* ---------- Comunidade (teste local) ---------- */
+// As telas só usam window.CommunityStore (community-store.js). Hoje ele guarda tudo neste aparelho;
+// depois pode ser trocado por um banco de dados online sem mexer aqui.
+// O histórico de viagens (S.trips) nunca vai para a Comunidade sozinho: só a viagem escolhida ao
+// publicar é copiada para o post.
+const CS = window.CommunityStore;
+const PROFILE_KEY = 'motokm:comunidade:perfil';          // perfil de teste em uso neste aparelho
+let comMe = (() => { try { return localStorage.getItem(PROFILE_KEY) || 'teste-a'; } catch (e) { return 'teste-a'; } })();
+let com = { view: 'feed', other: null, draft: null };      // view: feed | novo | inbox | chat
+let comProfiles = [], comToken = 0;
+const IC = {
+  heart: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
+  msg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  send: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg>'
+};
+const profOf = id => comProfiles.find(p => p.id === id) || { id, name: 'Perfil', color: '#8F99A3' };
+const avatarHTML = (p, size = 36) => `<span class="avatar" style="--c:${esc(p.color || '#8F99A3')};width:${size}px;height:${size}px;font-size:${Math.round(size * 0.45)}px" aria-hidden="true">${esc((p.name || '?').replace(/^Piloto\s+/, '').slice(0, 1).toUpperCase())}</span>`;
+const nameHTML = p => `<strong>${esc(p.name)}</strong>${p.test ? '<span class="tag-test">teste</span>' : ''}`;
+function setMe(id) { comMe = id; try { localStorage.setItem(PROFILE_KEY, id); } catch (e) {} }
+
+// Cópia da viagem que vai no post (rota reduzida para no máximo ~400 pontos).
+function tripSnapshot(t) {
+  const r0 = t.route || [], k = Math.max(1, Math.ceil(r0.length / 400));
+  const route = k > 1 ? r0.filter((_, i) => i % k === 0 || i === r0.length - 1) : r0.slice();
+  const snap = { tripId: t.id, start: t.start, end: t.end, km: t.km, movingSec: t.movingSec || 0, maxKmh: t.maxKmh || 0, route };
+  if (t.breaks?.length) snap.breaks = t.breaks.map(([i, kind]) => [Math.ceil(i / k), kind]);
+  return snap;
+}
+// Reduz a foto da galeria (até 1280 px, JPEG) antes de guardar.
+function shrinkPhoto(file) {
+  return new Promise((ok, no) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob(b => b ? ok(b) : no(new Error('foto')), 'image/jpeg', 0.82);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); no(new Error('foto')); };
+    img.src = url;
+  });
+}
+
+function postRouteHTML(post) {
+  const t = post.trip; if (!t) return '';
+  const media = t.movingSec > 0 ? t.km / (t.movingSec / 3600) : null;
+  const meta = `${dia(t.start)}${t.movingSec ? ` · ${durMin(t.movingSec)}` : ''}${media ? `<br>média ${Math.round(media)} km/h` : ''}`;
+  const has = t.route?.length > 1;
+  return `<button type="button" class="post-route${has ? '' : ' no-route'}" ${has ? `data-route="${esc(post.id)}" aria-label="Ver trajeto de ${fmt(t.km, 2)} km no mapa"` : 'disabled'}>
+    ${has ? routeSVG(t.route).replace('viewBox="0 0 52 40"', 'viewBox="0 0 52 40" preserveAspectRatio="xMidYMid meet"') : '<span class="small" style="color:#9AA4AE">Viagem sem trajeto no mapa</span>'}
+    <span class="km">${fmt(t.km, 2)}<small>km</small></span><span class="meta">${meta}</span></button>`;
+}
+function postHTML(post, { preview = false } = {}) {
+  const a = post.author, mine = post.authorId === comMe;
+  return `<article class="panel post" data-post="${esc(post.id)}">
+    <div class="post-head">${avatarHTML(a)}<div class="who">${nameHTML(a)}<div class="small muted">${preview ? 'prévia' : ago(post.createdAt)}</div></div>
+      ${mine && !preview ? `<button type="button" class="x" data-delpost="${esc(post.id)}" aria-label="Apagar post">×</button>` : ''}</div>
+    ${post.photoId ? `<img class="post-photo" data-photo="${esc(post.photoId)}" alt="Foto de ${esc(a.name)}">` : post.photoSrc ? `<img class="post-photo" src="${post.photoSrc}" alt="Foto escolhida">` : ''}
+    ${postRouteHTML(post)}
+    <div class="post-acts">
+      <button type="button" class="like" ${preview ? 'disabled' : `data-like="${esc(post.id)}"`} aria-pressed="${!!post.likedByMe}" aria-label="Curtir">${IC.heart}<span class="n">${post.likeCount || 0}</span></button>
+      ${!mine && !preview ? `<button type="button" data-dm="${esc(post.authorId)}">${IC.msg}Mensagem</button>` : ''}
+    </div>
+    <p class="post-cap">${post.caption ? `<strong>${esc(a.name)}</strong> ${esc(post.caption)}` : ''}</p>
+  </article>`;
+}
+function comHeader(title, back) {
+  const me = profOf(comMe);
+  return `<header class="row between" style="flex-wrap:nowrap">
+    ${back ? `<button type="button" class="back" id="comBack">‹ ${back}</button>` : `<h1>${title}</h1>`}
+    <div class="row" style="gap:8px;flex-wrap:nowrap">
+      <button type="button" class="chip" id="comProfile" aria-label="Trocar perfil de teste">${avatarHTML(me, 30)}${esc(me.name)} ▾</button>
+      ${com.view === 'feed' ? `<button type="button" class="iconbtn" id="comInbox" aria-label="Mensagens">${IC.send}<span class="badge" id="comUnread" hidden></span></button>` : ''}
+    </div></header>`;
+}
+
+async function viewComFeed() {
+  const posts = await CS.listFeed({ viewerId: comMe });
+  return `${comHeader('Comunidade')}
+  <p class="note" style="margin:0">Modo de teste: posts, curtidas e mensagens ficam só neste aparelho. Troque o perfil no botão acima para ver o outro lado.</p>
+  <button class="primary block" id="comNew">+ Publicar</button>
+  ${posts.length ? posts.map(p => postHTML(p)).join('')
+    : `<section class="panel"><div class="empty"><strong>Nenhum post ainda</strong><span class="small muted">Publique um rolê do seu histórico, uma foto ou os dois. Suas viagens só aparecem aqui quando você publicar.</span></div></section>`}`;
+}
+function viewComNew() {
+  const d = com.draft, trips = [...S.trips].sort((a, b) => b.start - a.start).slice(0, 30);
+  const row = (val, inner) => `<label><input type="radio" name="comTrip" value="${val}" ${String(d.tripId ?? '') === String(val) ? 'checked' : ''}>${inner}</label>`;
+  return `${comHeader('', 'Comunidade')}
+  <h1>Novo post</h1>
+  <section class="panel">
+    <span class="label">Trajeto</span>
+    <div class="pick-list" role="radiogroup" aria-label="Viagem para publicar">
+      ${row('', '<span></span><span class="muted">Sem trajeto</span>')}
+      ${trips.map(t => row(t.id, `${routeSVG(t.route)}<span><span class="num" style="font-size:20px">${fmt(t.km, 2)} km</span><br><span class="small muted">${dia(t.start)} · ${hora(t.start)}${t.movingSec ? ` · ${durMin(t.movingSec)}` : ''}</span></span>`)).join('')}
+    </div>
+    ${trips.length ? '' : '<span class="small muted">Você ainda não tem viagens salvas. Dá para publicar só uma foto.</span>'}
+    <span class="label">Foto</span>
+    <div class="photo-pick">
+      ${d.photoSrc ? `<img src="${d.photoSrc}" alt="Foto escolhida">` : ''}
+      <label class="btn" for="comPhoto" style="border:1px solid var(--line);background:transparent;flex:1">${d.photoSrc ? 'Trocar foto' : 'Escolher da galeria'}</label>
+      ${d.photoSrc ? '<button type="button" class="ghost" id="comNoPhoto">Tirar</button>' : ''}
+    </div>
+    <input id="comPhoto" type="file" accept="image/*" hidden>
+    <div class="field"><label class="label" for="comCaption">Legenda</label>
+      <textarea id="comCaption" maxlength="2200" placeholder="Conte como foi o rolê…">${esc(d.caption)}</textarea></div>
+  </section>
+  <span class="label">Prévia</span>
+  <div id="comPreview">${draftPreview()}</div>
+  <button class="primary block go" id="comPublish" ${d.tripId || d.photo ? '' : 'disabled'}>Publicar</button>
+  <p class="small muted" style="margin:0;text-align:center">Só este post vai para a Comunidade. O histórico de viagens continua separado.</p>`;
+}
+function draftPreview() {
+  const d = com.draft, t = d.tripId && S.trips.find(x => x.id === d.tripId);
+  if (!t && !d.photo) return '<div class="panel empty muted small">Escolha uma viagem, uma foto ou os dois para ver a prévia.</div>';
+  return postHTML({ id: 'preview', authorId: comMe, author: profOf(comMe), caption: d.caption.trim(), createdAt: Date.now(),
+    photoSrc: d.photoSrc, trip: t ? tripSnapshot(t) : null, likeCount: 0 }, { preview: true });
+}
+async function viewComInbox() {
+  const convs = await CS.listConversations(comMe), others = comProfiles.filter(p => p.id !== comMe);
+  return `${comHeader('', 'Comunidade')}
+  <h1>Mensagens</h1>
+  <section class="panel" style="gap:0">
+    ${convs.length ? convs.map(c => `<button type="button" class="conv${c.unread ? ' unread' : ''}" data-chat="${esc(c.other.id)}">
+        ${avatarHTML(c.other, 44)}<span style="min-width:0">${nameHTML(c.other)}<div class="small muted prev">${c.last.fromId === comMe ? 'Você: ' : ''}${esc(c.last.text)}</div></span>
+        <span class="small muted" style="text-align:right">${ago(c.last.createdAt)}${c.unread ? `<br><span class="badge" style="position:static;display:inline-block">${c.unread}</span>` : ''}</span></button>`).join('')
+      : '<div class="empty"><strong>Nenhuma conversa</strong><span class="small muted">Mande uma mensagem para outro perfil.</span></div>'}
+  </section>
+  <section class="panel">
+    <span class="label">Nova mensagem para</span>
+    ${others.map(p => `<button type="button" class="ghost block" data-chat="${esc(p.id)}" style="justify-content:flex-start">${avatarHTML(p, 30)}${nameHTML(p)}</button>`).join('')}
+  </section>`;
+}
+async function viewComChat() {
+  const o = profOf(com.other);
+  await CS.markRead(comMe, o.id);
+  const ms = await CS.listMessages(comMe, o.id);
+  return `${comHeader('', 'Mensagens')}
+  <div class="row" style="gap:10px">${avatarHTML(o, 40)}<div>${nameHTML(o)}<div class="small muted">Conversa direta</div></div></div>
+  <div class="chat" id="chat">${ms.length ? ms.map(bubbleHTML).join('') : '<div class="empty muted small">Diga oi para começar a conversa.</div>'}</div>
+  <div class="chat-bar"><form id="chatForm" autocomplete="off"><input id="chatText" maxlength="2000" placeholder="Mensagem para ${esc(o.name)}…" aria-label="Mensagem" enterkeyhint="send">
+    <button class="primary" type="submit" aria-label="Enviar">Enviar</button></form></div>`;
+}
+const bubbleHTML = m => `<div class="bub ${m.fromId === comMe ? 'me' : 'them'}">${esc(m.text)}<time>${hora(m.createdAt)}</time></div>`;
+
+// Monta a tela da Comunidade (os dados chegam do armazenamento de forma assíncrona).
+async function fillCommunity() {
+  const token = ++comToken, app = $('#app');
+  try {
+    comProfiles = await CS.listProfiles();
+    if (!comProfiles.some(p => p.id === comMe)) setMe(comProfiles[0].id);
+    if (com.view === 'chat' && (!com.other || com.other === comMe)) com.view = 'inbox';
+    if (com.view === 'novo' && !com.draft) com.view = 'feed';
+    const html = com.view === 'novo' ? viewComNew() : com.view === 'inbox' ? await viewComInbox() : com.view === 'chat' ? await viewComChat() : await viewComFeed();
+    if (token !== comToken || tab !== 'comunidade') return;
+    app.innerHTML = html;
+    bindCommunity(app);
+    if (com.view === 'chat') window.scrollTo(0, document.body.scrollHeight);
+  } catch (e) {
+    if (token === comToken && tab === 'comunidade') app.innerHTML = `<header><h1>Comunidade</h1></header><section class="panel"><p class="muted">Não consegui abrir os dados da Comunidade neste aparelho. ${esc(e.message || '')}</p></section>`;
+  }
+  updateComBadge();
+}
+function comGo(view, extra = {}) { Object.assign(com, { view }, extra); fillCommunity(); window.scrollTo(0, 0); }
+async function updateComBadge() {
+  let n = 0; try { n = await CS.unreadCount(comMe); } catch (e) {}
+  const tb = document.querySelector('[data-tab="comunidade"]');
+  if (tb) { tb.querySelector('.tab-dot')?.remove(); if (n) tb.insertAdjacentHTML('beforeend', '<span class="tab-dot" aria-hidden="true"></span>'); tb.setAttribute('aria-label', n ? `Comunidade, ${n} mensagens novas` : 'Comunidade'); }
+  const b = $('#comUnread'); if (b) { b.hidden = !n; b.textContent = n; }
+}
+function profileSheet() {
+  sheet(`<h2>Perfil de teste</h2>
+    <span class="small muted">Use os dois perfis no mesmo iPhone para conferir os dois lados: publicar, curtir e conversar.</span>
+    ${comProfiles.map(p => `<button type="button" class="${p.id === comMe ? 'primary' : 'ghost'} block" data-me="${esc(p.id)}" style="justify-content:flex-start">${avatarHTML(p, 30)}${esc(p.name)} <span class="small" style="opacity:.75">@${esc(p.handle || p.id)} · teste</span>${p.id === comMe ? ' ✓' : ''}</button>`).join('')}
+    <button type="button" class="linkbtn block" data-clear>Apagar posts, curtidas e mensagens de teste</button>`,
+    (el, close) => {
+      el.querySelectorAll('[data-me]').forEach(b => b.onclick = () => { setMe(b.dataset.me); close(); if (com.view === 'novo') com.view = 'feed'; fillCommunity(); toast(`Agora você é ${profOf(comMe).name}`); });
+      el.querySelector('[data-clear]').onclick = () => { close(); askConfirm('Apagar dados de teste?', 'Some com todos os posts, fotos, curtidas e mensagens da Comunidade deste aparelho. Viagens, recargas e ajustes não mudam.', 'Apagar',
+        () => CS.clearAll().then(() => { com = { view: 'feed', other: null, draft: null }; fillCommunity(); toast('Dados de teste apagados'); })); };
+    });
+}
+function routeMapSheet(trip) {
+  sheet(`<div class="row between"><h2>${fmt(trip.km, 2)} km</h2><button class="ghost" data-x style="min-height:40px">Fechar</button></div>
+    <div id="postMap" style="height:56vh;border-radius:12px;overflow:hidden;background:var(--seg-off)"></div>`, (el, close) => {
+    let m = null; const done = () => { try { m?.remove(); } catch (e) {} close(); };
+    el.querySelector('[data-x]').onclick = done;
+    loadLeaflet().then(() => {
+      const box = el.querySelector('#postMap'); if (!box || !document.body.contains(box)) return;
+      m = L.map(box, { attributionControl: true });
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+      L.polyline(trip.route, { color: '#1B1F24', weight: 8, opacity: .5 }).addTo(m);
+      const ln = L.polyline(trip.route, { color: '#9BDB2C', weight: 5 }).addTo(m);
+      m.fitBounds(ln.getBounds(), { padding: [20, 20] }); setTimeout(() => m?.invalidateSize(), 250);
+    }).catch(() => { const b = el.querySelector('#postMap'); if (b) b.outerHTML = '<p class="muted">Sem internet para carregar o mapa.</p>'; });
+  });
+}
+function bindCommunity(app) {
+  const on = (sel, fn) => { const el = app.querySelector(sel); if (el) el.onclick = fn; };
+  on('#comProfile', profileSheet);
+  on('#comInbox', () => comGo('inbox'));
+  on('#comBack', () => comGo(com.view === 'chat' ? 'inbox' : 'feed'));
+  on('#comNew', () => comGo('novo', { draft: { tripId: null, photo: null, photoSrc: null, caption: '' } }));
+  app.querySelectorAll('[data-photo]').forEach(img => CS.photoUrl(img.dataset.photo).then(u => { if (u) img.src = u; }).catch(() => {}));
+  app.querySelectorAll('[data-route]').forEach(b => b.onclick = async () => {
+    const p = (await CS.listFeed({ viewerId: comMe })).find(x => x.id === b.dataset.route); if (p?.trip) routeMapSheet(p.trip);
+  });
+  // Curtir: muda na hora e depois confirma o total guardado.
+  app.querySelectorAll('[data-like]').forEach(b => b.onclick = () => {
+    const liked = b.getAttribute('aria-pressed') !== 'true', n = b.querySelector('.n'), before = +n.textContent;
+    b.setAttribute('aria-pressed', liked); n.textContent = before + (liked ? 1 : -1);
+    CS.setLike(b.dataset.like, comMe, liked).then(r => { n.textContent = r.count; })
+      .catch(() => { b.setAttribute('aria-pressed', !liked); n.textContent = before; toast('Não consegui salvar a curtida'); });
+  });
+  app.querySelectorAll('[data-dm]').forEach(b => b.onclick = () => comGo('chat', { other: b.dataset.dm }));
+  app.querySelectorAll('[data-chat]').forEach(b => b.onclick = () => comGo('chat', { other: b.dataset.chat }));
+  app.querySelectorAll('[data-delpost]').forEach(b => b.onclick = () => askConfirm('Apagar post?', 'Ele sai da Comunidade. A viagem continua no seu histórico.', 'Apagar',
+    () => CS.deletePost(b.dataset.delpost, comMe).then(() => { fillCommunity(); toast('Post apagado'); }).catch(e => toast(e.message))));
+
+  // Novo post
+  const d = com.draft, refresh = () => {
+    const pv = $('#comPreview'); if (pv) pv.innerHTML = draftPreview();
+    const pb = $('#comPublish'); if (pb) pb.disabled = !(d.tripId || d.photo);
+  };
+  app.querySelectorAll('[name="comTrip"]').forEach(r => r.onchange = () => { d.tripId = r.value ? +r.value : null; refresh(); });
+  const cap = $('#comCaption'); if (cap) cap.oninput = () => { d.caption = cap.value; refresh(); };
+  const ph = $('#comPhoto'); if (ph) ph.onchange = () => {
+    const f = ph.files[0]; if (!f) return;
+    shrinkPhoto(f).then(b => { if (d.photoSrc) URL.revokeObjectURL(d.photoSrc); d.photo = b; d.photoSrc = URL.createObjectURL(b); fillCommunity(); })
+      .catch(() => toast('Não consegui abrir essa foto'));
+  };
+  on('#comNoPhoto', () => { if (d.photoSrc) URL.revokeObjectURL(d.photoSrc); d.photo = null; d.photoSrc = null; fillCommunity(); });
+  on('#comPublish', e => {
+    const t = d.tripId && S.trips.find(x => x.id === d.tripId);
+    if (!t && !d.photo) { toast('Escolha uma viagem ou uma foto'); return; }
+    e.currentTarget.disabled = true;
+    CS.createPost({ authorId: comMe, caption: d.caption.trim(), photo: d.photo, trip: t ? tripSnapshot(t) : null })
+      .then(() => { if (d.photoSrc) URL.revokeObjectURL(d.photoSrc); com.draft = null; comGo('feed'); toast('Publicado na Comunidade'); })
+      .catch(err => { toast(err.message || 'Não consegui publicar'); const pb = $('#comPublish'); if (pb) pb.disabled = false; });
+  });
+
+  // Conversa
+  const form = $('#chatForm'); if (form) form.onsubmit = ev => {
+    ev.preventDefault();
+    const inp = $('#chatText'), txt = inp.value.trim(); if (!txt) return;
+    inp.value = '';
+    CS.sendMessage(comMe, com.other, txt).then(m => {
+      const chat = $('#chat'); if (!chat) return;
+      chat.querySelector('.empty')?.remove();
+      chat.insertAdjacentHTML('beforeend', bubbleHTML(m)); window.scrollTo(0, document.body.scrollHeight); inp.focus();
+    }).catch(err => { inp.value = txt; toast(err.message || 'Não consegui enviar'); });
+  };
+}
+
 /* ---------- Telas ---------- */
 const TABS = [
   ['viagem', 'Viagem', '<circle cx="12" cy="13" r="8"/><path d="M12 13l4-4M12 3v2"/>'],
   ['mapa', 'Mapa', '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/>'],
+  ['comunidade', 'Comunidade', '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>'],
   ['relatorio', 'Relatório', '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'],
   ['cargas', 'Recargas', '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>'],
   ['ajustes', 'Ajustes', '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 1.2 14H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 7 2.6V2.5a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 19.4 9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 2z"/>']
@@ -689,7 +999,11 @@ const TABS = [
 function renderTabs() {
   $('#tabs').innerHTML = TABS.map(([id, name, ic]) =>
     `<button type="button" data-tab="${id}" ${tab === id ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ic}</svg>${name}</button>`).join('');
-  $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => { tab = b.dataset.tab; mapFocus = null; render(); window.scrollTo(0, 0); });
+  $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => {
+    tab = b.dataset.tab; mapFocus = null;
+    if (tab === 'comunidade' && com.view !== 'novo') com.view = 'feed';   // rascunho de post continua aberto
+    render(); window.scrollTo(0, 0);
+  });
 }
 
 function render() {
@@ -703,7 +1017,9 @@ function render() {
   if (tab === 'cargas') app.innerHTML = viewCharges();
   if (tab === 'mapa') app.innerHTML = viewMap();
   if (tab === 'ajustes') app.innerHTML = viewSettings();
+  if (tab === 'comunidade') app.innerHTML = '<div class="empty muted">Carregando a Comunidade…</div>';
   bind();
+  if (tab === 'comunidade') fillCommunity(); else updateComBadge();
 }
 
 // Tempo da viagem sem as pausas.

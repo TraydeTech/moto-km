@@ -15,6 +15,12 @@ Na aba **Mapa** aparecem as rotas das viagens e os perigos marcados (fio caído,
 
 O mapa usa OpenFreeMap (grátis, sem chave) com dados do OpenStreetMap e precisa de internet.
 
+## Comunidade (teste local)
+
+Na aba **Comunidade** dá para publicar um rolê (uma viagem do histórico, uma foto da galeria ou os dois), curtir e conversar por mensagem direta. Nesta etapa é só um teste: não há servidor nem conta. Tudo fica neste aparelho, e há dois perfis de demonstração (**Piloto A** e **Piloto B**, marcados como *teste*). O botão com o nome do perfil, no topo, troca entre eles para testar os dois lados no mesmo iPhone. As viagens só aparecem na Comunidade quando você escolhe publicá-las; o histórico continua separado.
+
+Os dados da Comunidade ficam num IndexedDB próprio (`motokm-comunidade`), fora do backup e do "Apagar tudo" de Ajustes. Para limpar, use o seletor de perfil → *Apagar posts, curtidas e mensagens de teste*. As telas só falam com o `CommunityStore` (`community-store.js`); para ligar num banco de dados online, basta criar outra implementação com as mesmas funções.
+
 O app nativo aqui usa o [Capacitor](https://capacitorjs.com) com o plugin `@capacitor-community/background-geolocation`, que liga o modo "localização em segundo plano" do iOS (a seta azul no topo da tela).
 
 ## Gerar o app do iPhone

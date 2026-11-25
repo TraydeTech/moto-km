@@ -7,6 +7,7 @@ Mudanças relevantes do Moto KM. A versão pública fica no `package.json` e seg
 Próxima release sugerida: **1.2.0** (funcionalidades novas, compatíveis com os dados de antes).
 
 ### Novo
+- **Comunidade** (teste local): feed com foto e/ou mapa do trajeto com a distância, publicar com prévia (viagem salva, foto da galeria ou os dois), curtir e descurtir, caixa de entrada e conversa direta. Dois perfis de demonstração (Piloto A e Piloto B, marcados como teste) com seletor para usar o mesmo iPhone como duas pessoas. Tudo fica só no aparelho, num armazenamento separado das viagens; o histórico só vai para o feed quando você publica.
 - Ajustes: **Aparência** com Claro, Escuro e Sistema (padrão). Em Sistema, acompanha o aparelho com o app aberto; no iPhone, a barra de status acompanha o tema.
 - Ajustes: **Sobre o Moto KM** com a versão (e o build no iPhone) e um botão para copiar ao relatar um problema.
 - Visual de painel elétrico nas telas da viagem: "Bora rodar", distância em destaque durante a viagem e resumo "Rolê salvo" com rota, duração, média, bateria e consumo estimado (#8).
@@ -19,6 +20,7 @@ Próxima release sugerida: **1.2.0** (funcionalidades novas, compatíveis com os
 - A lista de viagens mostra a hora de chegada em vez do tempo em movimento com cara de horário (#1).
 
 ### Interno
+- Comunidade: as telas usam só o `CommunityStore` (`community-store.js`, IndexedDB `motokm-comunidade`), com funções assíncronas no formato de um banco (perfis, posts, fotos, curtidas, mensagens), para depois trocar por um banco online sem refazer as telas.
 - Versão única: `package.json` → `APP_VERSION` no `index.html` e `MARKETING_VERSION` no iOS (`npm run version:sync`); o build falha se divergirem.
 - Plugins `@capacitor/app` (versão e build instalados) e `@capacitor/status-bar`.
 - App nativo e mapa juntados na `main` (#2); prints de teste removidos (#4).
