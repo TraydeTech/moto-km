@@ -120,6 +120,17 @@ nav .tabs{display:flex;width:100%;max-width:560px}
 nav button{flex:1;min-width:0;flex-direction:column;gap:2px;background:transparent;border-radius:0;font-size:11px;font-weight:600;color:var(--muted);padding:10px 2px;min-height:60px;letter-spacing:-.01em}
 nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 nav button[aria-current="page"]{color:var(--accent-txt)}
+nav button[aria-current="page"]::after{content:"";position:absolute;bottom:4px;width:26px;height:3px;border-radius:4px;background:currentColor}
+.ride-icon{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+.ride-brand{display:flex;align-items:center;gap:7px;font:italic 800 20px var(--body);margin-bottom:8px}
+.ride-brand .ride-icon,.ride-brand b{color:var(--accent-txt)}
+.ride-brand .ride-icon{width:29px;height:29px}
+.ride-map-frame .ride-recenter .ride-icon{width:24px;height:24px}
+.ride-actions button{gap:6px}
+.ride-actions .ride-icon{width:16px;height:16px}
+.ride-map .ride-pin{color:#a8e635}
+.ride-map .ride-pin .ride-icon{width:28px;height:28px;fill:currentColor;stroke:#14171a}
+
 
 /* Janela de baixo */
 .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
@@ -262,6 +273,24 @@ textarea{font:400 16px/1.4 var(--body);color:var(--fg);background:var(--bg);bord
 .ride-summary-distance{text-align:center;font-size:clamp(42px,13vw,65px)}
 .ride-actions button{min-height:52px}
 .ride-map .leaflet-tooltip{font-weight:700;background:var(--panel);color:var(--fg);border-color:var(--line)}
+
+.ride-layout {--ride-font:system-ui,-apple-system,sans-serif}
+.ride-layout h1,.ride-layout .num,.ride-layout .big,.ride-layout button.go,.ride-layout .done-badge{font-family:var(--ride-font);letter-spacing:-.025em}
+.ride-layout button.go{text-transform:none;font-weight:800}
+.ride-layout .ride-main{padding:0;border:0;background:transparent;box-shadow:none;gap:12px}
+.ride-layout .ride-main .ride-map-frame{margin:0}
+.ride-layout .ride-main .ride-map{height:clamp(225px,42svh,410px)}
+.ride-layout .ride-finished .ride-map{height:clamp(185px,33svh,320px)}
+.ride-layout .ride-telemetry{border-top:0;padding:4px 0;gap:0}
+.ride-layout .ride-telemetry .stat+.stat{border-left:1px solid var(--line)}
+.ride-layout .ride-telemetry .label{text-transform:none;letter-spacing:0}
+.ride-layout .ride-summary-distance{line-height:1.1}
+.ride-layout .ride-summary-distance .unit{color:inherit;font-size:.72em}
+.ride-layout .ride-actions button{font-family:var(--ride-font);font-weight:800;text-transform:none;font-size:clamp(13px,4vw,17px)}
+.ride-layout .ride-actions .ghost{border:1px solid var(--muted)}
+.ride-layout .done-badge{font-size:clamp(18px,6vw,30px);color:var(--fg);text-transform:none;font-weight:800}
+.ride-layout .done-badge .ride-icon{color:var(--accent-txt);width:27px;height:27px}
+.ride-battery{gap:8px}
 </style>
 </head>
 <body>
@@ -1108,10 +1137,10 @@ function bindCommunity(app) {
 
 /* ---------- Telas ---------- */
 const TABS = [
-  ['viagem', 'Viagem', '<circle cx="12" cy="13" r="8"/><path d="M12 13l4-4M12 3v2"/>'],
-  ['mapa', 'Mapa', '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/>'],
+  ['viagem', 'Viagem', '<circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17h8l3-6-2-5h-3m8 11-3-6M3 11h5l2 2h4m-8 4 2-4"/>'],
+  ['mapa', 'Mapa', '<path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.7"/>'],
   ['comunidade', 'Comunidade', '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>'],
-  ['relatorio', 'Relatório', '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'],
+  ['relatorio', 'Relatório', '<path d="M3 15h4v6H3zM10 10h4v11h-4zM17 4h4v17h-4z"/>'],
   ['cargas', 'Recargas', '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>'],
   ['ajustes', 'Ajustes', '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 1.2 14H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 7 2.6V2.5a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 19.4 9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 2z"/>']
 ];
@@ -1132,6 +1161,7 @@ function render() {
   renderTabs();
   const app = $('#app');
   const sum = !S.active && summaryId && S.trips.find(t => t.id === summaryId);
+  app.classList.toggle('ride-layout', tab === 'viagem');
   if (tab === 'viagem') app.innerHTML = S.active ? viewLive() : sum ? viewSummary(sum) : viewStart();
   if (tab === 'relatorio') app.innerHTML = viewReport();
   if (tab === 'cargas') app.innerHTML = viewCharges();
@@ -1156,7 +1186,7 @@ function viewStart() {
   const st = stats(S.trips), today = stats(inPeriod(S.trips, startOfDay(Date.now())));
   const last = S.trips[S.trips.length - 1];
   return `
-  <header class="row between"><h1>Moto KM</h1><span class="small muted">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</span></header>
+  <header class="row between">${rideBrand}<span class="small muted">${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</span></header>
   <section class="panel hero">
     <span class="label">Bateria inicial</span>
     <span class="small muted" style="margin-top:-8px">Marque os tracinhos que o painel mostra agora</span>
@@ -1179,11 +1209,12 @@ function viewStart() {
     </div>${st.autonomia ? '' : `<p class="note">Valor de fábrica (Ajustes). Quando as viagens gastarem 2 tracinhos ou mais, o app passa a usar a autonomia medida.</p>`}</section>` : ''}`;
 }
 
+const rideBrand = `<div class="ride-brand"><svg class="ride-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17h8l3-6-2-5h-3m8 11-3-6M3 11h5l2 2h4m-8 4 2-4"/></svg><span>Moto <b>KM</b></span></div>`;
 function rideMapHTML(live) {
   return `<div class="ride-map-frame">
     <div id="rideMap" class="ride-map" aria-label="${live ? 'Mapa do rolê em andamento' : 'Mapa do trajeto salvo'}"></div>
     <span id="rideMapNote" class="ride-map-note small">Carregando mapa…</span>
-    ${live ? '<button type="button" class="ride-recenter" id="rideRecenter" aria-label="Centralizar na minha posição" hidden>⌖</button>' : ''}
+    ${live ? '<button type="button" class="ride-recenter" id="rideRecenter" aria-label="Centralizar na minha posição" hidden><svg class="ride-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/><circle cx="12" cy="12" r="2"/></svg></button>' : ''}
   </div>`;
 }
 function updateRideMap(trip) {
@@ -1231,8 +1262,10 @@ function initRideMap(trip, live) {
       const route = trip.route;
       map.fitBounds(route, { padding: [44, 38], maxZoom: 16 });
       const markers = route.length === 1 ? [[route[0], 'Início e fim']] : [[route[0], 'Início'], [route[route.length - 1], 'Fim']];
-      markers.forEach(([pt, label]) => L.circleMarker(pt, {
-        radius: 7, color: '#242A12', weight: 2, fillColor: '#9BDB2C', fillOpacity: 1
+      markers.forEach(([pt, label]) => L.marker(pt, {
+        icon: L.divIcon({ className: 'ride-pin', iconSize: [28, 28], iconAnchor: [14, 26],
+          html: '<svg class="ride-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5" fill="#14171a"/></svg>' }),
+        alt: label
       }).addTo(map).bindTooltip(label, { permanent: true, direction: label === 'Fim' ? 'right' : 'left' }));
     }
   }).catch(() => { if (box.isConnected) { note.hidden = false; note.textContent = 'Não foi possível abrir o mapa'; } });
@@ -1242,19 +1275,20 @@ function viewSummary(t) {
   const wh = used > 0 ? used / S.settings.tracos * S.settings.volts * S.settings.ah : null;
   const media = t.movingSec > 0 ? t.km / (t.movingSec / 3600) : null; // média em movimento, como no Strava
   return `
-  <header class="row between"><span class="done-badge">✓ Rolê salvo</span><span class="small muted">${dia(t.start)} · ${hora(t.start)} → ${hora(t.end)}</span></header>
-  <section class="panel hero appear" style="gap:14px">
+  ${rideBrand}
+  <header class="row between"><span class="done-badge"><svg class="ride-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7 12 3 3 7-7"/></svg> Rolê salvo</span><span class="small muted">${dia(t.start)} · ${hora(t.start)} → ${hora(t.end)}</span></header>
+  <section class="panel hero appear ride-main ride-finished">
     ${t.route?.length ? rideMapHTML(false) : '<p class="note">Este rolê não tem pontos de GPS salvos.</p>'}
     <div class="big ride-summary-distance">${fmt(t.km, 2)}<span class="unit">km</span></div>
-    <div class="kpis">
-      <div class="stat"><span class="label">Duração</span><span class="num">${durMin(tripSec(t))}</span><span class="small muted">${t.pausedSec ? `+ ${durMin(t.pausedSec)} pausado` : 'sem pausa'}</span></div>
-      <div class="stat"><span class="label">Média</span><span class="num">${media ? Math.round(media) : '–'}</span><span class="small muted">km/h</span></div>
-      <div class="stat"><span class="label">Máxima</span><span class="num">${Math.round(t.maxKmh || 0)}</span><span class="small muted">km/h</span></div>
+    <div class="kpis ride-telemetry">
+      <div class="stat"><span class="num">${durMin(tripSec(t))}</span><span class="label">Duração</span>${t.pausedSec ? `<span class="small muted">+ ${durMin(t.pausedSec)} pausado</span>` : ''}</div>
+      <div class="stat"><span class="num">${media ? Math.round(media) : '–'}<span class="unit">km/h</span></span><span class="label">Média</span></div>
+      <div class="stat"><span class="num">${Math.round(t.maxKmh || 0)}<span class="unit">km/h</span></span><span class="label">Máxima</span></div>
     </div>
   </section>
   <section class="panel" style="gap:10px">
-    <div class="row between"><span class="label">Bateria</span>
-      <span class="batt-flow">${batteryHTML(t.dashStart, { mini: true })}<span class="muted" aria-label="para">→</span>${batteryHTML(t.dashEnd, { mini: true })}</span></div>
+    <div class="row between"><span class="row ride-battery">${batteryHTML(t.dashEnd, { mini: true })}<strong>Bateria</strong></span>
+      <span class="small">${used > 0 ? `${used} ${used === 1 ? 'tracinho usado' : 'tracinhos usados'}` : 'Sem consumo medido'}</span></div>
     <div class="row between small"><span class="muted">Consumo estimado</span>
       <strong>${wh ? `${used} ${used > 1 ? 'tracinhos' : 'tracinho'} · ~${fmt(wh / 1000, 2)} kWh` : 'dados insuficientes'}</strong></div>
     ${wh ? '' : '<p class="note" style="margin:0">Os tracinhos não baixaram nesta viagem. O consumo aparece quando a bateria cair pelo menos um tracinho.</p>'}
@@ -1265,8 +1299,9 @@ function viewSummary(t) {
 function viewLive() {
   const P = !!S.active.pausedAt;
   return `
+  ${rideBrand}
   <header class="row between"><h1>${P ? 'Rolê pausado' : 'Rodando'}</h1><span class="pill gps" id="gps"><span class="dot"></span>GPS</span></header>
-  <section class="panel hero" style="gap:14px">
+  <section class="panel hero ride-main ride-running">
     ${rideMapHTML(true)}
     <div class="kpis ride-telemetry">
       <div class="stat"><span class="num"><span id="spd">0</span><span class="unit">km/h</span></span><span class="label">Velocidade</span></div>
@@ -1275,8 +1310,8 @@ function viewLive() {
     </div>
     <div class="grid2 ride-actions">${P
       ? '<button class="ghost" id="resume">▶ Retomar</button>'
-      : '<button class="ghost" id="pause">Ⅱ Pausar</button>'}
-      <button class="primary" id="end">Encerrar rolê</button>
+      : '<button class="ghost" id="pause"><svg class="ride-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14m6-14v14" stroke-width="3"/></svg> Pausar</button>'}
+      <button class="primary" id="end"><svg class="ride-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/></svg> Encerrar rolê</button>
     </div>
   </section>
   <section class="panel" style="gap:10px">
