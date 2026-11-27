@@ -251,6 +251,17 @@ textarea{font:400 16px/1.4 var(--body);color:var(--fg);background:var(--bg);bord
 .chat-bar input{border-radius:999px}
 .chat-bar button{border-radius:999px;padding:10px 16px}
 .back{background:transparent;min-height:44px;padding:6px 8px 6px 0;font-size:16px;color:var(--accent-txt)}
+.ride-map-frame{position:relative;isolation:isolate;z-index:0;margin:-14px -14px 0}
+.ride-map{height:clamp(235px,43svh,440px);background:var(--seg-off);border-radius:14px;overflow:hidden}
+.ride-map-frame .ride-recenter{position:absolute;right:12px;bottom:24px;z-index:500;border-radius:50%;width:44px;height:44px;padding:0;background:var(--panel);color:var(--fg);border:1px solid var(--line);font-size:25px}
+.ride-map-note{position:absolute;top:10px;left:10px;z-index:500;padding:6px 9px;border-radius:8px;background:var(--panel);color:var(--fg);pointer-events:none}
+.ride-map-note[hidden],.ride-recenter[hidden]{display:none}
+.ride-telemetry .stat{text-align:center;min-width:0}
+.ride-telemetry .num{font-size:clamp(17px,6vw,30px);white-space:nowrap}
+.ride-telemetry .unit{font-size:.55em;margin-left:3px}
+.ride-summary-distance{text-align:center;font-size:clamp(42px,13vw,65px)}
+.ride-actions button{min-height:52px}
+.ride-map .leaflet-tooltip{font-weight:700;background:var(--panel);color:var(--fg);border-color:var(--line)}
 </style>
 </head>
 <body>
@@ -326,6 +337,7 @@ function applyTheme() {
 sysDark.addEventListener?.('change', () => {
   if (S.settings.tema !== 'sistema') return;
   applyTheme();
+  if (rideMap) rideMap.map.getContainer().classList.toggle('map-dark', isDark());
   if (tab === 'mapa') setMapTheme();              // troca o estilo do mapa sem perder o zoom e a posição
 });
 
@@ -737,7 +749,7 @@ function darkenStyle(st) {
 }
 // Cores das linhas por tema: lima do app; a viagem em foco ou em andamento em azul (mais claro no escuro).
 const routeColors = dark => ({ line: dark ? '#B6F04A' : '#9BDB2C', focus: dark ? '#60A5FA' : '#2563EB', casing: dark ? '#0B0E11' : '#1B1F24' });
-let mapGl = null, mapLines = [];
+let mapGl = null, mapLines = [], rideMap = null;
 function setMapTheme() {
   const box = $('#map'); if (!mapObj || !box) return;
   const dark = isDark(), col = routeColors(dark);
@@ -745,7 +757,7 @@ function setMapTheme() {
   mapLines.forEach(({ line, kind }) => line.setStyle({ color: col[kind] }));
   if (mapGl) mapStyle(dark).then(s => { if (mapGl && isDark() === dark) mapGl.getMaplibreMap().setStyle(s); }).catch(() => {});
 }
-function drawRoute(route, breaks, opts, on) {
+function drawRoute(route, breaks, opts, on, target = mapObj, tracked = mapLines) {
   // Trechos gravados em linha cheia; trecho sem GPS (somado em linha reta) tracejado; pausa sem ligação.
   const col = routeColors(isDark()), kind = on ? 'focus' : 'line', parts = routeParts(route, breaks), layers = [];
   parts.forEach((p, i) => {
@@ -755,12 +767,12 @@ function drawRoute(route, breaks, opts, on) {
   });
   const all = [];
   for (const [pts, o] of layers) {        // contorno escuro por baixo: a linha aparece sobre qualquer rua
-    const c = L.polyline(pts, { color: col.casing, weight: (o.weight || opts.weight) + 3, opacity: opts.opacity * 0.55, dashArray: o.dashArray, interactive: false, lineCap: 'round' }).addTo(mapObj);
-    mapLines.push({ line: c, kind: 'casing' });
+    const c = L.polyline(pts, { color: col.casing, weight: (o.weight || opts.weight) + 3, opacity: opts.opacity * 0.55, dashArray: o.dashArray, interactive: false, lineCap: 'round' }).addTo(target);
+    tracked?.push({ line: c, kind: 'casing' });
   }
   for (const [pts, o] of layers) {
-    const ln = L.polyline(pts, { color: col[kind], weight: o.weight || opts.weight, opacity: opts.opacity, dashArray: o.dashArray, lineCap: 'round' }).addTo(mapObj);
-    mapLines.push({ line: ln, kind }); all.push(ln);
+    const ln = L.polyline(pts, { color: col[kind], weight: o.weight || opts.weight, opacity: opts.opacity, dashArray: o.dashArray, lineCap: 'round' }).addTo(target);
+    tracked?.push({ line: ln, kind }); all.push(ln);
   }
   return all;
 }
@@ -1114,6 +1126,7 @@ function renderTabs() {
 }
 
 function render() {
+  rideMap?.map.remove(); rideMap = null;
   applyTheme();
   if (mapObj) { mapObj.remove(); mapObj = null; mapGl = null; mapLines = []; }
   renderTabs();
@@ -1166,6 +1179,64 @@ function viewStart() {
     </div>${st.autonomia ? '' : `<p class="note">Valor de fábrica (Ajustes). Quando as viagens gastarem 2 tracinhos ou mais, o app passa a usar a autonomia medida.</p>`}</section>` : ''}`;
 }
 
+function rideMapHTML(live) {
+  return `<div class="ride-map-frame">
+    <div id="rideMap" class="ride-map" aria-label="${live ? 'Mapa do rolê em andamento' : 'Mapa do trajeto salvo'}"></div>
+    <span id="rideMapNote" class="ride-map-note small">Carregando mapa…</span>
+    ${live ? '<button type="button" class="ride-recenter" id="rideRecenter" aria-label="Centralizar na minha posição" hidden>⌖</button>' : ''}
+  </div>`;
+}
+function updateRideMap(trip) {
+  const { map, paths, live, recenter } = rideMap;
+  const route = trip.route || [], last = route[route.length - 1];
+  if (last && (rideMap.routeEnd !== last || rideMap.count !== route.length)) {
+    rideMap.routeEnd = last; rideMap.count = route.length;
+    paths.clearLayers();
+    drawRoute(route, trip.breaks, { weight: 5, opacity: 1 }, false, paths, null);
+  }
+  const position = trip.last || last;
+  if (!live || !position || rideMap.last === position) return;
+  rideMap.last = position;
+  const firstFix = !rideMap.dot;
+  if (firstFix) {
+    rideMap.dot = L.circleMarker(position, { radius: 8, color: '#9BDB2C', weight: 4, fillColor: '#FFFFFF', fillOpacity: 1, interactive: false }).addTo(map);
+    recenter.hidden = false;
+  } else rideMap.dot.setLatLng(position).bringToFront();
+  if (rideMap.follow) {
+    if (firstFix) map.setView(position, 16);
+    else map.panTo(position, { animate: false });
+  }
+}
+function initRideMap(trip, live) {
+  const box = $('#rideMap'), note = $('#rideMapNote'), recenter = $('#rideRecenter');
+  loadLeaflet().then(() => {
+    if (!box.isConnected) return;
+    box.classList.toggle('map-dark', isDark());
+    const map = L.map(box, { zoomControl: false }).setView([-26.92, -49.07], 13);
+    const paths = L.layerGroup().addTo(map);
+    rideMap = { map, paths, live, recenter, follow: true };
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).on('tileload', () => { note.hidden = true; }).on('tileerror', () => {
+      if (!note.hidden) note.textContent = 'Mapa de ruas indisponível';
+    }).addTo(map);
+    // Route geometry stays available even if the street tiles cannot load.
+    note.textContent = 'Carregando ruas…';
+    updateRideMap(trip);
+    if (live) {
+      map.on('dragstart', () => { rideMap.follow = false; });
+      recenter.onclick = () => { rideMap.follow = true; if (rideMap.last) map.setView(rideMap.last, 16); };
+    } else {
+      const route = trip.route;
+      map.fitBounds(route, { padding: [44, 38], maxZoom: 16 });
+      const markers = route.length === 1 ? [[route[0], 'Início e fim']] : [[route[0], 'Início'], [route[route.length - 1], 'Fim']];
+      markers.forEach(([pt, label]) => L.circleMarker(pt, {
+        radius: 7, color: '#242A12', weight: 2, fillColor: '#9BDB2C', fillOpacity: 1
+      }).addTo(map).bindTooltip(label, { permanent: true, direction: label === 'Fim' ? 'right' : 'left' }));
+    }
+  }).catch(() => { if (box.isConnected) { note.hidden = false; note.textContent = 'Não foi possível abrir o mapa'; } });
+}
 function viewSummary(t) {
   const used = t.dashStart != null && t.dashEnd != null ? t.dashStart - t.dashEnd : null;
   const wh = used > 0 ? used / S.settings.tracos * S.settings.volts * S.settings.ah : null;
@@ -1173,8 +1244,8 @@ function viewSummary(t) {
   return `
   <header class="row between"><span class="done-badge">✓ Rolê salvo</span><span class="small muted">${dia(t.start)} · ${hora(t.start)} → ${hora(t.end)}</span></header>
   <section class="panel hero appear" style="gap:14px">
-    ${t.route?.length > 1 ? routeSVG(t.route, t.breaks).replace('<svg ', '<svg class="route-big" ') : ''}
-    <div class="big" style="font-size:88px">${fmt(t.km, 2)}<span class="unit">km</span></div>
+    ${t.route?.length ? rideMapHTML(false) : '<p class="note">Este rolê não tem pontos de GPS salvos.</p>'}
+    <div class="big ride-summary-distance">${fmt(t.km, 2)}<span class="unit">km</span></div>
     <div class="kpis">
       <div class="stat"><span class="label">Duração</span><span class="num">${durMin(tripSec(t))}</span><span class="small muted">${t.pausedSec ? `+ ${durMin(t.pausedSec)} pausado` : 'sem pausa'}</span></div>
       <div class="stat"><span class="label">Média</span><span class="num">${media ? Math.round(media) : '–'}</span><span class="small muted">km/h</span></div>
@@ -1196,25 +1267,29 @@ function viewLive() {
   return `
   <header class="row between"><h1>${P ? 'Rolê pausado' : 'Rodando'}</h1><span class="pill gps" id="gps"><span class="dot"></span>GPS</span></header>
   <section class="panel hero" style="gap:14px">
-    <span class="label">Distância</span>
-    <div class="big" style="font-size:104px"><span id="lkm">0,00</span><span class="unit">km</span></div>
-    <div class="kpis">
-      <div class="stat"><span class="label">Tempo</span><span class="num" id="ltime">0:00</span><span class="small muted">rodando</span></div>
-      <div class="stat"><span class="label">Agora</span><span class="num" id="spd">0</span><span class="small muted">km/h</span></div>
-      <div class="stat"><span class="label">Máxima</span><span class="num" id="lmax">0</span><span class="small muted">km/h</span></div>
+    ${rideMapHTML(true)}
+    <div class="kpis ride-telemetry">
+      <div class="stat"><span class="num"><span id="spd">0</span><span class="unit">km/h</span></span><span class="label">Velocidade</span></div>
+      <div class="stat"><span class="num"><span id="lkm">0,00</span><span class="unit">km</span></span><span class="label">Distância</span></div>
+      <div class="stat"><span class="num" id="ltime">0:00</span><span class="label">Duração</span></div>
+    </div>
+    <div class="grid2 ride-actions">${P
+      ? '<button class="ghost" id="resume">▶ Retomar</button>'
+      : '<button class="ghost" id="pause">Ⅱ Pausar</button>'}
+      <button class="primary" id="end">Encerrar rolê</button>
     </div>
   </section>
   <section class="panel" style="gap:10px">
+    <div class="row between small"><span class="muted">Velocidade máxima</span><strong><span id="lmax">0</span> km/h</strong></div>
     <div class="row between small"><span class="muted">Saiu com</span>${batteryHTML(S.active.dashStart, { mini: true })}</div>
     <div class="row between small" id="restWrap"><span class="muted">Ainda dá para rodar${autonomia().real ? '' : ' · fábrica'}</span><strong id="lrest">–</strong></div>
   </section>
-  ${P
-    ? '<button class="primary block go" id="resume">▶ Retomar</button><button class="ghost block" id="end">Encerrar rolê</button>'
-    : '<button class="primary block go" id="end">Encerrar rolê</button><div class="grid2"><button class="ghost" id="pause">Ⅱ Pausar</button><button class="warn" id="report">⚠ Perigo</button></div>'}
+  ${P ? '' : '<button class="warn block" id="report">⚠ Perigo</button>'}
   <button class="linkbtn block" id="cancel">Descartar sem salvar</button>`;
 }
 function renderLive() {
   const A = S.active; if (!A || tab !== 'viagem' || !$('#spd')) return;
+  if (rideMap) updateRideMap(A);
   $('#spd').textContent = Math.round(A.speed || 0);
   $('#lkm').textContent = fmt(A.m / 1000, 2);
   $('#ltime').textContent = dur(A.movingMs / 1000);
@@ -1463,7 +1538,11 @@ function bind() {
   });
   if (tab === 'mapa') initMap();
   $('#cancel') && ($('#cancel').onclick = () => askConfirm('Descartar viagem?', 'Os quilômetros desta viagem não serão salvos.', 'Descartar', cancelTrip));
-  if (S.active && tab === 'viagem') renderLive();
+  if (tab === 'viagem') {
+    const trip = S.active || S.trips.find(t => t.id === summaryId);
+    if (trip && $('#rideMap')) initRideMap(trip, !!S.active);
+    if (S.active) renderLive();
+  }
 
   app.querySelectorAll('[data-chart]').forEach(b => b.onclick = () => { chartMode = b.dataset.chart; render(); });
   app.querySelectorAll('[data-del]').forEach(b => b.onclick = () => askConfirm('Apagar viagem?', 'Ela sai do relatório e do hodômetro.', 'Apagar', () => {
