@@ -7,6 +7,8 @@ Mudanças relevantes do Moto KM. A versão pública fica no `package.json` e seg
 Próxima release sugerida: **1.2.0** (funcionalidades novas, compatíveis com os dados de antes).
 
 ### Novo
+- **Mapa do rolê ao vivo**: ao tocar em Bora rodar, a tela Rodando mostra as ruas, sua posição e a linha verde do caminho já percorrido (os mesmos pontos de GPS que o app usa para medir). O mapa acompanha você; se arrastar para olhar outro lugar, aparece o botão Centralizar. Pausar, retomar e encerrar continuam logo abaixo do mapa.
+- **Rolê salvo com mapa**: o resumo mostra o percurso completo sobre as ruas, com marcadores de início e fim, no lugar da linha sobre fundo escuro. O trecho sem GPS (somado em linha reta) aparece pontilhado. Tocar num rolê do histórico (ou no Último rolê) reabre esse resumo; rolês antigos sem GPS e viagens manuais mostram o resumo com uma mensagem no lugar do mapa.
 - **Comunidade** (teste local): feed com foto e/ou mapa do trajeto com a distância, publicar com prévia (viagem salva, foto da galeria ou os dois), curtir e descurtir, caixa de entrada e conversa direta. Dois perfis de demonstração (Piloto A e Piloto B, marcados como teste) com seletor para usar o mesmo iPhone como duas pessoas. Tudo fica só no aparelho, num armazenamento separado das viagens; o histórico só vai para o feed quando você publica.
 - Ajustes: **Aparência** com Claro, Escuro e Sistema (padrão). Em Sistema, acompanha o aparelho com o app aberto; no iPhone, a barra de status acompanha o tema.
 - Ajustes: **Sobre o Moto KM** com a versão (e o build no iPhone) e um botão para copiar ao relatar um problema.
@@ -22,6 +24,7 @@ Próxima release sugerida: **1.2.0** (funcionalidades novas, compatíveis com os
 - A lista de viagens mostra a hora de chegada em vez do tempo em movimento com cara de horário (#1).
 
 ### Interno
+- Mapa base único (`baseMap`) para a aba Mapa, a viagem em andamento e o resumo. Teste de ponta a ponta com GPS simulado: `npm run test:rota` (precisa do Playwright).
 - Comunidade: as telas usam só o `CommunityStore` (`community-store.js`, IndexedDB `motokm-comunidade`), com funções assíncronas no formato de um banco (perfis, posts, fotos, curtidas, mensagens), para depois trocar por um banco online sem refazer as telas.
 - Versão única: `package.json` → `APP_VERSION` no `index.html` e `MARKETING_VERSION` no iOS (`npm run version:sync`); o build falha se divergirem.
 - Plugins `@capacitor/app` (versão e build instalados) e `@capacitor/status-bar`.

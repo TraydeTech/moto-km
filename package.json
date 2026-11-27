@@ -11,7 +11,8 @@
     "version:sync": "node scripts/version.mjs sync",
     "version:check": "node scripts/version.mjs check",
     "release:check": "node scripts/version.mjs check --release",
-    "version": "node scripts/version.mjs sync && git add index.html ios/App/App.xcodeproj/project.pbxproj"
+    "version": "node scripts/version.mjs sync && git add index.html ios/App/App.xcodeproj/project.pbxproj",
+    "test:rota": "node scripts/test-rota.mjs"
   },
   "dependencies": {
     "@capacitor-community/background-geolocation": "1.3.1",

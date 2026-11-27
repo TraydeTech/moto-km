@@ -13,6 +13,8 @@ O iPhone **não deixa sites usarem o GPS com a tela bloqueada**. Por isso o Stra
 
 Na aba **Mapa** aparecem as rotas das viagens e os perigos marcados (fio caído, buraco, alagamento, obra, acidente). Para marcar: botão **Avisar perigo aqui** (usa o GPS) ou segurar o dedo no mapa. Durante a viagem o app avisa com voz quando chega a 200 m de um perigo. Por enquanto os avisos ficam só neste aparelho; o compartilhamento entre usuários (com login) vem numa próxima etapa.
 
+Durante o rolê, a tela **Rodando** mostra o mapa com sua posição e a linha verde do caminho percorrido (sem precisar escolher destino). Ao encerrar, o **Rolê salvo** mostra o percurso completo com início e fim; tocar num rolê do histórico reabre esse resumo.
+
 O mapa usa OpenFreeMap (grátis, sem chave) com dados do OpenStreetMap e precisa de internet.
 
 ## Comunidade (teste local)
@@ -73,5 +75,7 @@ O `npm run build:www` (e portanto o `npm run ios:sync`) para com erro se a vers�
    ```
 
 5. Faça o commit, junte na `main` e, no commit aprovado, crie a tag e a release do GitHub (por exemplo `v1.2.0`). Nas notas da release, liste os builds distribuídos, como `1.2.0 (3) — TestFlight`.
+
+Teste automático do mapa do rolê (Chromium com GPS simulado; precisa do Playwright e de internet): `npm run test:rota`.
 
 Para testar no seu iPhone pelo cabo não precisa mudar a versão nem o build.
